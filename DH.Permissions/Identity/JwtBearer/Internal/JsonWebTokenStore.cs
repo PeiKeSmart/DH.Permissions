@@ -20,22 +20,21 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// <summary>
     /// 初始化一个<see cref="JsonWebTokenStore"/>类型的实例
     /// </summary>
-    /// <param name="cacheProvider"></param>
-    public JsonWebTokenStore(ICacheProvider cacheProvider)
+    /// <param name="cache"></param>
+    public JsonWebTokenStore(ICache cache)
     {
-        _cache = cacheProvider.Cache;
-        //if (RedisSetting.Current.RedisEnabled)
-        //{
-        //    _cache = Singleton<FullRedis>.Instance;
-        //    if (_cache == null)
-        //    {
-        //        XTrace.WriteLine($"Redis缓存对象为空，请检查是否注入FullRedis");
-        //    }
-        //}
-        //else
-        //{
-        //    _cache = cache;
-        //}
+        if (RedisSetting.Current.RedisEnabled)
+        {
+            _cache = Singleton<FullRedis>.Instance;
+            if (_cache == null)
+            {
+                XTrace.WriteException(new Exception($"Redis缓存对象为空，请检查是否注入FullRedis"));
+            }
+        }
+        else
+        {
+            _cache = cache;
+        }
     }
 
     /// <summary>
