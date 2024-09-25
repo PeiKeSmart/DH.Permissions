@@ -38,6 +38,7 @@ public interface IJsonWebTokenBuilder
     /// 刷新令牌
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
+    /// <param name="options"></param>
     JsonWebToken Refresh(string refreshToken, JwtOptions options);
 
     /// <summary>

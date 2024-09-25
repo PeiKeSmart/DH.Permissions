@@ -176,6 +176,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// 刷新令牌
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
+    /// <param name="options"></param>
     public JsonWebToken Refresh(string refreshToken, JwtOptions options)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))

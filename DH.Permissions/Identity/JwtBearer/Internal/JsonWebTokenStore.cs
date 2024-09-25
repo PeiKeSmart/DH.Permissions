@@ -20,7 +20,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// <summary>
     /// 初始化一个<see cref="JsonWebTokenStore"/>类型的实例
     /// </summary>
-    /// <param name="cache"></param>
+    /// <param name="cache">缓存</param>
     public JsonWebTokenStore(ICache cache)
     {
         if (RedisSetting.Current.RedisEnabled)
@@ -35,6 +35,14 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
         {
             _cache = cache;
         }
+        //if (DHUtilSetting.Current.IsUseRedisCache)
+        //{
+        //    _cache = EngineContext.Current.Resolve<ICache>();
+        //}
+        //else
+        //{
+        //    _cache = cache;
+        //}
     }
 
     /// <summary>

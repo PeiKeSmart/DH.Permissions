@@ -47,13 +47,12 @@
     <PackageReference Include="DH.NRedis" Version="3.91.2024.923-beta0226" />
     <PackageReference Include="IdentityModel" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Pek.AspNetCore" Version="3.91.2024.923-beta0426" />
-    <PackageReference Include="Pek.Common" Version="3.91.2024.924-beta0327" />
+    <PackageReference Include="Pek.AspNetCore" Version="3.91.2024.924-beta1420" />
   </ItemGroup>
 
   <ItemGroup>

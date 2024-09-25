@@ -20,7 +20,7 @@ public static class IdentityExtensions
     public static string GetUserId(this IIdentity identity)
     {
         if (identity == null) throw new ArgumentNullException(nameof(identity));
-        
+
         if (!(identity is ClaimsIdentity claimsIdentity))
             return null;
         var result = claimsIdentity.GetValue(IdentityModel.JwtClaimTypes.Subject);
