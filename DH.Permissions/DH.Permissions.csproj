@@ -60,7 +60,7 @@
 		<PackageReference Include="Pek.AspNetCore" Version="3.91.2024.1008-beta0736" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
-    <PackageReference Include="DH.NRedis" Version="3.91.2024.1008-beta0342" />
+    <PackageReference Include="DH.NRedis" Version="3.91.2024.1008-beta0919" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
