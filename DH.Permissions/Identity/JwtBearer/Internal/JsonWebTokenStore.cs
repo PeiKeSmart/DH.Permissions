@@ -2,6 +2,7 @@
 using NewLife.Log;
 
 using Pek.Configs;
+using Pek.Infrastructure;
 using Pek.Security;
 
 namespace DH.Permissions.Identity.JwtBearer.Internal;
@@ -24,7 +25,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     {
         if (RedisSetting.Current.RedisEnabled)
         {
-            _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<FullRedis>();
+            _cache = NewLife.Model.ObjectContainer.Provider.GetPekService<FullRedis>();
             if (_cache == null)
             {
                 XTrace.WriteException(new Exception($"Redis缓存对象为空，请检查是否注入FullRedis"));
