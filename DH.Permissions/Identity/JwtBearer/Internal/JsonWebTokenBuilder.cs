@@ -68,7 +68,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
     public JsonWebToken Create(IDictionary<string, string> payload, Double RefreshExpireMinutes, Double AccessExpireMinutes = 0)
     {
-        var options = _options.DeepClone();
+        var options = _options.DeepCloneWithJson();
 
         if (AccessExpireMinutes > 0)
         {
@@ -162,7 +162,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
     public JsonWebToken Refresh(string refreshToken, Double RefreshExpireMinutes)
     {
-        var options = _options.DeepClone();
+        var options = _options.DeepCloneWithJson();
 
         if (RefreshExpireMinutes > 0)
         {
@@ -225,7 +225,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
     public JsonWebToken Refresh(string refreshToken, Int32 expire, Double RefreshExpireMinutes)
     {
-        var options = _options.DeepClone();
+        var options = _options.DeepCloneWithJson();
 
         if (RefreshExpireMinutes > 0)
         {
