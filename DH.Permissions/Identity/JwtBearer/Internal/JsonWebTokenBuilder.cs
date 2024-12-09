@@ -223,7 +223,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="expire">延时时间。秒</param>
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
-    public JsonWebToken Refresh(string refreshToken, Int32 expire, Double RefreshExpireMinutes)
+    public JsonWebToken Refresh(String refreshToken, Int32 expire, Double RefreshExpireMinutes)
     {
         var options = _options.DeepCloneWithJson();
 
