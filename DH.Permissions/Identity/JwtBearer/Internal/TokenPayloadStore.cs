@@ -18,18 +18,8 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// <param name="cache"></param>
     public TokenPayloadStore(ICache cache)
     {
-        if (Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache == null)
-        {
-            _cache = cache;
-        }
-        //if (DHUtilSetting.Current.IsUseRedisCache)
-        //{
-        //    _cache = EngineContext.Current.Resolve<ICache>();
-        //}
-        //else
-        //{
-        //    _cache = cache;
-        //}
+        _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache;
+        _cache ??= cache;
     }
 
     /// <summary>

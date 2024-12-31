@@ -20,10 +20,8 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// <param name="cache">缓存</param>
     public JsonWebTokenStore(ICache cache)
     {
-        if (Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache == null)
-        {
-            _cache = cache;
-        }
+        _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache;
+        _cache ??= cache;
     }
 
     /// <summary>
