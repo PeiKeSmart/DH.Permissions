@@ -1,8 +1,4 @@
 ﻿using NewLife.Caching;
-using NewLife.Log;
-
-using Pek.Configs;
-using Pek.Infrastructure;
 
 namespace DH.Permissions.Identity.JwtBearer.Internal;
 
@@ -22,15 +18,7 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// <param name="cache"></param>
     public TokenPayloadStore(ICache cache)
     {
-        if (RedisSetting.Current.RedisEnabled)
-        {
-            _cache = NewLife.Model.ObjectContainer.Provider.GetPekService<FullRedis>();
-            if (_cache == null)
-            {
-                XTrace.WriteException(new Exception($"Redis缓存对象为空，请检查是否注入FullRedis"));
-            }
-        }
-        else
+        if (Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache == null)
         {
             _cache = cache;
         }
