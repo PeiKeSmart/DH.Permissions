@@ -20,6 +20,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <NoWarn>1701;1702;1591;NU5104;NU1505;NETSDK1138;CS7035</NoWarn>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <WarningsAsErrors>CA2007</WarningsAsErrors>
+
     <!--禁止生成launchSettings.json-->
     <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
   </PropertyGroup>
@@ -57,7 +60,7 @@
 	<ItemGroup>
     <PackageReference Include="IdentityModel" Version="7.0.0" />
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.3.0" />
-		<PackageReference Include="Pek.AspNetCore" Version="4.0.2025.105-beta0316" />
+		<PackageReference Include="Pek.AspNetCore" Version="4.0.2025.106-beta0942" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">

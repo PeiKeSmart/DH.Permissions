@@ -63,7 +63,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         }
         ResultHandle(context, requirement);
-        await Task.FromResult(0);
+        await Task.FromResult(0).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -77,7 +77,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         // 未登录而被拒绝
         var result = httpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader);
-        if (!result || string.IsNullOrWhiteSpace(authorizationHeader))
+        if (!result || String.IsNullOrWhiteSpace(authorizationHeader))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
         var token = authorizationHeader.ToString().Split(' ').Last().Trim();
         if (!_tokenStore.ExistsToken(token))
@@ -105,15 +105,14 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
     {
         var httpContext = _accessor.HttpContext;
 
-        if (httpContext == null)
-            httpContext = Pek.Webs.HttpContext.Current;
+        httpContext ??= Pek.Webs.HttpContext.Current;
         if (httpContext == null)
             return;
 
         // 未登录而被拒绝
         var result = httpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader);
 
-        if (!result || string.IsNullOrWhiteSpace(authorizationHeader))
+        if (!result || String.IsNullOrWhiteSpace(authorizationHeader))
         {
             context.Fail();
             return;
@@ -166,12 +165,12 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
     /// 获取Payload
     /// </summary>
     /// <param name="encodeJwt">加密后的Jwt令牌</param>
-    private IDictionary<string, string> GetPayload(string encodeJwt)
+    private IDictionary<String, String> GetPayload(String encodeJwt)
     {
         var jwtArray = encodeJwt.Split('.');
         if (jwtArray.Length < 3)
             throw new ArgumentException($"非有效Jwt令牌");
-        var payload = JsonHelper.ToJsonEntity<Dictionary<string, string>>(Base64UrlEncoder.Decode(jwtArray[1]));
+        var payload = JsonHelper.ToJsonEntity<Dictionary<String, String>>(Base64UrlEncoder.Decode(jwtArray[1]));
         return payload;
     }
 }

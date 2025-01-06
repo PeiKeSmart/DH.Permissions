@@ -24,12 +24,12 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
     /// <summary>
     /// 校验负载
     /// </summary>
-    private readonly Func<IDictionary<string, string>, JwtOptions, bool> _validatePayload;
+    private readonly Func<IDictionary<String, String>, JwtOptions, Boolean> _validatePayload;
 
     /// <summary>
     /// 匿名访问路径列表
     /// </summary>
-    private readonly IList<string> _anonymousPathList;
+    private readonly IList<String> _anonymousPathList;
 
     /// <summary>
     /// Jwt令牌校验器
@@ -48,8 +48,8 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
         RequestDelegate next
         , IOptions<JwtOptions> options
         , IJsonWebTokenValidator tokenValidator
-        , Func<IDictionary<string, string>, JwtOptions, bool> validatePayload
-        , IList<string> anonymousPathList)
+        , Func<IDictionary<String, String>, JwtOptions, Boolean> validatePayload
+        , IList<String> anonymousPathList)
     {
         _next = next;
         _options = options.Value;
@@ -67,18 +67,18 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
         // 如果是匿名访问路径，则直接跳过
         if (_anonymousPathList.Contains(context.Request.Path.Value))
         {
-            await _next(context);
+            await _next(context).ConfigureAwait(false);
             return;
         }
 
         var result = context.Request.Headers.TryGetValue("Authorization", out var authStr);
-        if (!result || string.IsNullOrWhiteSpace(authStr.ToString()))
+        if (!result || String.IsNullOrWhiteSpace(authStr.ToString()))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
         // 校验以及自定义校验
-        result = _tokenValidator.Validate(authStr.ToString().Substring("Bearer ".Length).Trim(), _options,
+        result = _tokenValidator.Validate(authStr.ToString()["Bearer ".Length..].Trim(), _options,
             _validatePayload);
         if (!result)
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
-        await _next(context);
+        await _next(context).ConfigureAwait(false);
     }
 }
