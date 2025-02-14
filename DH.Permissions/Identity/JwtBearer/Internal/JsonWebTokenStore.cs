@@ -1,4 +1,5 @@
 ﻿using NewLife.Caching;
+using NewLife.Log;
 
 using Pek.Security;
 
@@ -21,6 +22,9 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     public JsonWebTokenStore(ICache cache)
     {
         _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache;
+
+        XTrace.WriteLine($"JsonWebTokenStore排查Cache:{_cache != null}:{_cache?.Name}");
+
         _cache ??= cache;
     }
 
