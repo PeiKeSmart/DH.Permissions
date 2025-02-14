@@ -20,9 +20,6 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     public TokenPayloadStore(ICache cache)
     {
         _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache;
-
-        XTrace.WriteLine($"TokenPayloadStore排查Cache:{_cache != null}:{_cache?.Name}");
-
         _cache ??= cache;
     }
 
