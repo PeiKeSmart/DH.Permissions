@@ -45,7 +45,7 @@ public static class IdentityExtensions
             result = claimsIdentity.GetValue(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(result))
             return default;
-        return Conv.To<T>(result);
+        return Conv.CTo<T>(result);
     }
 
     #endregion

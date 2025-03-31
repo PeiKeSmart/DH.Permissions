@@ -117,9 +117,9 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
         var accessToken = new JsonWebToken()
         {
             AccessToken = token,
-            AccessTokenUtcExpires = Conv.To<long>(accessExpires.ToJsGetTime()),
+            AccessTokenUtcExpires = Conv.CTo<long>(accessExpires.ToJsGetTime()),
             RefreshToken = refreshTokenStr,
-            RefreshUtcExpires = Conv.To<long>(refreshExpires.ToJsGetTime())
+            RefreshUtcExpires = Conv.CTo<long>(refreshExpires.ToJsGetTime())
         };
         _tokenStore.SaveToken(accessToken, accessExpires);
 
