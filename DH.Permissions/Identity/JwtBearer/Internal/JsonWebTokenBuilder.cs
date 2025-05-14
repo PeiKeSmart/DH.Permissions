@@ -4,6 +4,10 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
+using NewLife;
+using NewLife.Log;
+using NewLife.Serialization;
+
 using Pek;
 using Pek.Exceptions;
 using Pek.Helpers;
@@ -58,7 +62,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// 创建令牌
     /// </summary>
     /// <param name="payload">负载</param>
-    public JsonWebToken Create(IDictionary<string, string> payload) => Create(payload, _options);
+    public JsonWebToken Create(IDictionary<String, String> payload) => Create(payload, _options);
 
     /// <summary>
     /// 创建令牌
@@ -66,7 +70,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="payload">负载</param>
     /// <param name="AccessExpireMinutes">访问令牌有效期分钟数</param>
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
-    public JsonWebToken Create(IDictionary<string, string> payload, Double RefreshExpireMinutes, Double AccessExpireMinutes = 0)
+    public JsonWebToken Create(IDictionary<String, String> payload, Double RefreshExpireMinutes, Double AccessExpireMinutes = 0)
     {
         var options = _options.DeepCloneWithJson();
 
@@ -88,11 +92,14 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// </summary>
     /// <param name="payload">负载</param>
     /// <param name="options">Jwt选项配置</param>
-    public JsonWebToken Create(IDictionary<string, string> payload, JwtOptions options)
+    public JsonWebToken Create(IDictionary<String, String> payload, JwtOptions options)
     {
-        if (string.IsNullOrWhiteSpace(options.Secret))
+        if (options.Secret.IsNullOrWhiteSpace())
             throw new ArgumentNullException(nameof(options.Secret),
                 $@"{nameof(options.Secret)}为Null或空字符串。请在""appsettings.json""配置""{nameof(JwtOptions)}""节点及其子节点""{nameof(JwtOptions.Secret)}""");
+
+        XTrace.WriteLine($"获取到的负载：{payload.ToJson()}");
+
         var clientId = payload.ContainsKey("clientId") ? payload["clientId"] : Guid.NewGuid().ToString();
         var clientType = payload.ContainsKey("clientType") ? payload["clientType"] : "admin";
         var userId = GetUserId(payload);
