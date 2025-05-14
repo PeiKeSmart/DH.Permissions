@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
+using NewLife;
 using NewLife.Serialization;
 
 using Pek.Security;
@@ -84,9 +85,23 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             throw new UnauthorizedAccessException("未授权，无效参数");
         if (!_tokenValidator.Validate(token, _options, requirement.ValidatePayload))
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
+
+        // 兼容旧版本：校验From字段（两者都为空则跳过校验）
+        var payload = GetPayload(token);
+        var endpoint = httpContext.GetEndpoint();
+        var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
+        var requiredFrom = fromAttribute?.From;
+        payload.TryGetValue("From", out var tokenFrom);
+        if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
+        {
+            if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException($"Token来源不符，要求From={requiredFrom}, 实际From={tokenFrom}");
+            }
+        }
+
         if (_options.SingleDeviceEnabled)
         {
-            var payload = GetPayload(token);
             var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"], payload["clientType"]);
             if (bindDeviceInfo.DeviceId != payload["clientId"])
                 throw new UnauthorizedAccessException("该账号已在其它设备登录");
@@ -140,6 +155,20 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         }
 
         var payload = GetPayload(token);
+
+        // 兼容旧版本：校验From字段（两者都为空则跳过校验）
+        var endpoint = httpContext.GetEndpoint();
+        var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
+        var requiredFrom = fromAttribute?.From;
+        payload.TryGetValue("From", out var tokenFrom);
+        if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
+        {
+            if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
+            {
+                context.Fail();
+                return;
+            }
+        }
 
         // 单设备登录
         if (_options.SingleDeviceEnabled)
