@@ -89,18 +89,18 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         // 兼容旧版本：校验From字段（两者都为空则跳过校验）
         var payload = GetPayload(token);
-        // var endpoint = httpContext.GetEndpoint();
-        // var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
-        // var requiredFrom = fromAttribute?.From;
-        // payload.TryGetValue("From", out var tokenFrom);
-        // XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
-        // if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
-        // {
-        //     if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
-        //     {
-        //         throw new UnauthorizedAccessException($"Token来源不符，要求From={requiredFrom}, 实际From={tokenFrom}");
-        //     }
-        // }
+        var endpoint = httpContext.GetEndpoint();
+        var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
+        var requiredFrom = fromAttribute?.From;
+        payload.TryGetValue("From", out var tokenFrom);
+        XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
+        if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
+        {
+            if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException($"Token来源不符，要求From={requiredFrom}, 实际From={tokenFrom}");
+            }
+        }
 
         if (_options.SingleDeviceEnabled)
         {
@@ -158,20 +158,20 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         var payload = GetPayload(token);
 
-        // // 兼容旧版本：校验From字段（两者都为空则跳过校验）
-        // var endpoint = httpContext.GetEndpoint();
-        // var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
-        // var requiredFrom = fromAttribute?.From;
-        // payload.TryGetValue("From", out var tokenFrom);
-        // XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
-        // if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
-        // {
-        //     if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
-        //     {
-        //         context.Fail();
-        //         return;
-        //     }
-        // }
+        // 兼容旧版本：校验From字段（两者都为空则跳过校验）
+        var endpoint = httpContext.GetEndpoint();
+        var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
+        var requiredFrom = fromAttribute?.From;
+        payload.TryGetValue("From", out var tokenFrom);
+        XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
+        if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
+        {
+            if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
+            {
+                context.Fail();
+                return;
+            }
+        }
 
         // 单设备登录
         if (_options.SingleDeviceEnabled)

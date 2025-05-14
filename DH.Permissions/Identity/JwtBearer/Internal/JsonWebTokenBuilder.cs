@@ -100,11 +100,14 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
 
         XTrace.WriteLine($"获取到的负载：{payload.ToJson()}");
 
-        var clientId = payload.ContainsKey("clientId") ? payload["clientId"] : Guid.NewGuid().ToString();
-        var clientType = payload.ContainsKey("clientType") ? payload["clientType"] : "admin";
+        var clientId = payload.TryGetValue("clientId", out var ClientId) ? ClientId : Guid.NewGuid().ToString();
+        var clientType = payload.TryGetValue("clientType", out var ClientType) ? ClientType : "admin";
+
         var userId = GetUserId(payload);
-        if (userId.IsEmpty())
-            throw new ArgumentException("不存在用户标识");
+        if (userId.IsEmpty()) throw new ArgumentException("不存在用户标识");
+
+        var from = payload.TryGetValue("From", out var From) ? From : "Web";
+
         var claims = Helper.ToClaims(payload);
 
         // 生成刷新令牌
