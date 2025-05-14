@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 using NewLife;
+using NewLife.Log;
 using NewLife.Serialization;
 
 using Pek.Security;
@@ -92,6 +93,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
         var requiredFrom = fromAttribute?.From;
         payload.TryGetValue("From", out var tokenFrom);
+        XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
         if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
         {
             if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
