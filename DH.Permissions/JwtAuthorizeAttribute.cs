@@ -17,5 +17,10 @@ public class JwtAuthorizeAttribute : AuthorizeAttribute
     /// 初始化 <see cref="JwtAuthorizeAttribute"/> 类的新实例。
     /// </summary>
     /// <param name="from">Jwt 来源标识。</param>
-    public JwtAuthorizeAttribute(String from) { From = from; Policy = "jwt"; }
+    /// <param name="policy">授权策略名称，默认为 "jwt"。</param>
+    public JwtAuthorizeAttribute(String from, String policy = "jwt")
+    {
+        From = from;
+        Policy = policy;
+    }
 }
