@@ -163,6 +163,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
         var requiredFrom = fromAttribute?.From;
         payload.TryGetValue("From", out var tokenFrom);
+        XTrace.WriteLine($"判断获取到的数据：{tokenFrom}:{requiredFrom}");
         if (!requiredFrom.IsNullOrWhiteSpace() || !tokenFrom.IsNullOrWhiteSpace())
         {
             if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
