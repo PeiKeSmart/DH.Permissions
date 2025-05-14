@@ -124,11 +124,13 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
         var accessToken = new JsonWebToken()
         {
             AccessToken = token,
-            AccessTokenUtcExpires = Conv.CTo<long>(accessExpires.ToJsGetTime()),
+            AccessTokenUtcExpires = Conv.CTo<Int64>(accessExpires.ToJsGetTime()),
             RefreshToken = refreshTokenStr,
-            RefreshUtcExpires = Conv.CTo<long>(refreshExpires.ToJsGetTime())
+            RefreshUtcExpires = Conv.CTo<Int64>(refreshExpires.ToJsGetTime())
         };
         _tokenStore.SaveToken(accessToken, accessExpires);
+
+        XTrace.WriteLine($"生成的访问令牌：{token}");
 
         // 绑定用户设备令牌
         _tokenStore.BindUserDeviceToken(userId, clientType, new DeviceTokenBindInfo()
