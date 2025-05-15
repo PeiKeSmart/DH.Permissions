@@ -11,17 +11,17 @@ public class DeviceTokenBindInfo
     /// <summary>
     /// 用户标识
     /// </summary>
-    public string UserId { get; set; }
+    public String UserId { get; set; }
 
     /// <summary>
     /// 设备标识
     /// </summary>
-    public string DeviceId { get; set; }
+    public String DeviceId { get; set; }
 
     /// <summary>
     /// 设备类型
     /// </summary>
-    public string DeviceType { get; set; }
+    public String DeviceType { get; set; }
 
     /// <summary>
     /// 令牌

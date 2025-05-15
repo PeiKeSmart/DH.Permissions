@@ -106,7 +106,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
         var userId = GetUserId(payload);
         if (userId.IsEmpty()) throw new ArgumentException("不存在用户标识");
 
-        var from = payload.TryGetValue("From", out var From) ? From : "Web";
+        if (!payload.TryGetValue("From", out var From)) throw new ArgumentException("不包含来源标识");
 
         var claims = Helper.ToClaims(payload);
 
@@ -154,11 +154,11 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// 获取用户标识
     /// </summary>
     /// <param name="payload">负载列表</param>
-    private string GetUserId(IDictionary<string, string> payload)
+    private String GetUserId(IDictionary<String, String> payload)
     {
-        var userId = payload.GetOrDefault(IdentityModel.JwtClaimTypes.Subject, string.Empty);
+        var userId = payload.GetOrDefault(IdentityModel.JwtClaimTypes.Subject, String.Empty);
         if (userId.IsEmpty())
-            userId = payload.GetOrDefault(System.Security.Claims.ClaimTypes.Sid, string.Empty);
+            userId = payload.GetOrDefault(System.Security.Claims.ClaimTypes.Sid, String.Empty);
         return userId;
     }
 
@@ -166,14 +166,14 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// 刷新令牌
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
-    public JsonWebToken Refresh(string refreshToken) => Refresh(refreshToken, _options);
+    public JsonWebToken Refresh(String refreshToken) => Refresh(refreshToken, _options);
 
     /// <summary>
     /// 刷新令牌
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
-    public JsonWebToken Refresh(string refreshToken, Double RefreshExpireMinutes)
+    public JsonWebToken Refresh(String refreshToken, Double RefreshExpireMinutes)
     {
         var options = _options.DeepCloneWithJson();
 
@@ -190,9 +190,9 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="options"></param>
-    public JsonWebToken Refresh(string refreshToken, JwtOptions options)
+    public JsonWebToken Refresh(String refreshToken, JwtOptions options)
     {
-        if (string.IsNullOrWhiteSpace(refreshToken))
+        if (String.IsNullOrWhiteSpace(refreshToken))
             throw new ArgumentNullException(nameof(refreshToken));
         var parameters = new TokenValidationParameters()
         {
