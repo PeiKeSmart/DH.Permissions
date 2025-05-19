@@ -133,9 +133,6 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
         };
         _tokenStore.SaveToken(accessToken, accessExpires);
 
-        XTrace.WriteLine($"生成的访问令牌：{token}");
-        XTrace.WriteLine($"生成的刷新令牌：{refreshToken}");
-
         // 绑定用户设备令牌
         _tokenStore.BindUserDeviceToken(userId, clientType, new DeviceTokenBindInfo()
         {
