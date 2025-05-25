@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
+
+using NewLife;
 using NewLife.Caching;
-using NewLife.Log;
 
 using Pek.Security;
 
@@ -44,7 +45,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// 获取刷新令牌
     /// </summary>
     /// <param name="token">刷新令牌</param>
-    public RefreshToken GetRefreshToken(string token) =>
+    public RefreshToken GetRefreshToken(String token) =>
         _cache.Get<RefreshToken>(GetRefreshTokenKey(token));
 
     /// <summary>
@@ -57,7 +58,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// 移除刷新令牌
     /// </summary>
     /// <param name="token">刷新令牌</param>
-    public void RemoveRefreshToken(string token)
+    public void RemoveRefreshToken(String token)
     {
         if (!_cache.ContainsKey(GetRefreshTokenKey(token)))
             return;
@@ -74,7 +75,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// </summary>
     /// <param name="token">刷新令牌</param>
     /// <param name="expire">延时时间。秒</param>
-    public void RemoveRefreshToken(string token, Int32 expire)
+    public void RemoveRefreshToken(String token, Int32 expire)
     {
         var key = GetRefreshTokenKey(token);
         var key1 = GetBindRefreshTokenKey(token);
@@ -95,13 +96,13 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// 获取访问令牌
     /// </summary>
     /// <param name="token">访问令牌</param>
-    public JsonWebToken GetToken(string token) => _cache.Get<JsonWebToken>(GetTokenKey(token));
+    public JsonWebToken GetToken(String token) => _cache.Get<JsonWebToken>(GetTokenKey(token));
 
     /// <summary>
     /// 移除访问令牌
     /// </summary>
     /// <param name="token">访问令牌</param>
-    public void RemoveToken(string token)
+    public void RemoveToken(String token)
     {
         if (!_cache.ContainsKey(GetTokenKey(token)))
             return;
@@ -113,7 +114,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// </summary>
     /// <param name="token">访问令牌</param>
     /// <param name="expire">延时时间。秒</param>
-    public void RemoveToken(string token, Int32 expire)
+    public void RemoveToken(String token, Int32 expire)
     {
         var key = GetTokenKey(token);
 
@@ -138,7 +139,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// 是否存在访问令牌
     /// </summary>
     /// <param name="token">访问令牌</param>
-    public bool ExistsToken(string token) => _cache.ContainsKey(GetTokenKey(token));
+    public Boolean ExistsToken(String token) => _cache.ContainsKey(GetTokenKey(token));
     
     /// <summary>
     /// 验证Token是否有效且存在于存储中
@@ -147,9 +148,9 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// <param name="options">Jwt选项配置</param>
     /// <param name="validator">Token验证器</param>
     /// <returns>Token是否有效且存在</returns>
-    public bool IsValidAndExists(string token, JwtOptions options, IJsonWebTokenValidator validator)
+    public Boolean IsValidAndExists(String token, JwtOptions options, IJsonWebTokenValidator validator)
     {
-        if (string.IsNullOrWhiteSpace(token))
+        if (token.IsNullOrWhiteSpace())
             return false;
 
         // 首先检查Token是否在存储中
@@ -165,10 +166,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// </summary>
     /// <param name="token">访问令牌</param>
     /// <returns>Token是否有效且存在</returns>
-    public bool IsValidAndExists(string token)
-    {
-        return IsValidAndExists(token, _jwtOptions.Value, _validator);
-    }
+    public Boolean IsValidAndExists(String token) => IsValidAndExists(token, _jwtOptions.Value, _validator);
 
     /// <summary>
     /// 绑定用户设备令牌
@@ -177,7 +175,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// <param name="clientType">客户端类型</param>
     /// <param name="info">设备信息</param>
     /// <param name="expires">过期时间</param>
-    public void BindUserDeviceToken(string userId, string clientType, DeviceTokenBindInfo info,
+    public void BindUserDeviceToken(String userId, String clientType, DeviceTokenBindInfo info,
         DateTime expires) => _cache.Set(GetBindUserDeviceTokenKey(userId, clientType), info,
         expires.Subtract(DateTime.UtcNow));
 
@@ -193,25 +191,25 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// 获取刷新令牌缓存键
     /// </summary>
     /// <param name="token">刷新令牌</param>
-    private static string GetRefreshTokenKey(string token) => $"jwt:token:refresh:{token}";
+    private static String GetRefreshTokenKey(String token) => $"jwt:token:refresh:{token}";
 
     /// <summary>
     /// 获取访问令牌缓存键
     /// </summary>
     /// <param name="token">访问令牌</param>
-    private static string GetTokenKey(string token) => $"jwt:token:access:{token}";
+    private static String GetTokenKey(String token) => $"jwt:token:access:{token}";
 
     /// <summary>
     /// 获取绑定刷新令牌缓存键
     /// </summary>
     /// <param name="token">刷新令牌</param>
-    private static string GetBindRefreshTokenKey(string token) => $"jwt:token:bind:{token}";
+    private static String GetBindRefreshTokenKey(String token) => $"jwt:token:bind:{token}";
 
     /// <summary>
     /// 获取绑定用户设备令牌缓存键
     /// </summary>
     /// <param name="userId">用户标识</param>
     /// <param name="clientType">客户端类型</param>
-    private static string GetBindUserDeviceTokenKey(string userId, string clientType) =>
+    private static String GetBindUserDeviceTokenKey(String userId, String clientType) =>
         $"jwt:token:bind_user:{userId}:{clientType}";
 }
