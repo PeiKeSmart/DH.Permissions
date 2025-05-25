@@ -1,4 +1,5 @@
-﻿using NewLife.Caching;
+﻿using Microsoft.Extensions.Options;
+using NewLife.Caching;
 using NewLife.Log;
 
 using Pek.Security;
@@ -16,13 +17,27 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     private readonly ICache _cache;
 
     /// <summary>
+    /// JWT选项配置
+    /// </summary>
+    private readonly IOptions<JwtOptions> _jwtOptions;
+
+    /// <summary>
+    /// JWT验证器
+    /// </summary>
+    private readonly IJsonWebTokenValidator _validator;
+
+    /// <summary>
     /// 初始化一个<see cref="JsonWebTokenStore"/>类型的实例
     /// </summary>
     /// <param name="cache">缓存</param>
-    public JsonWebTokenStore(ICache cache)
+    /// <param name="jwtOptions">JWT选项配置</param>
+    /// <param name="validator">JWT验证器</param>
+    public JsonWebTokenStore(ICache cache, IOptions<JwtOptions> jwtOptions, IJsonWebTokenValidator validator)
     {
         _cache = Pek.Webs.HttpContext.Current.RequestServices.GetRequiredService<ICacheProvider>().Cache;
         _cache ??= cache;
+        _jwtOptions = jwtOptions;
+        _validator = validator;
     }
 
     /// <summary>
@@ -92,11 +107,12 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
             return;
         _cache.Remove(GetTokenKey(token));
     }
-
+    
     /// <summary>
     /// 移除访问令牌
     /// </summary>
     /// <param name="token">访问令牌</param>
+    /// <param name="expire">延时时间。秒</param>
     public void RemoveToken(string token, Int32 expire)
     {
         var key = GetTokenKey(token);
@@ -117,12 +133,42 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
         _cache.Set(GetTokenKey(token.AccessToken), token, expires.Subtract(DateTime.UtcNow));
         _cache.Set(GetBindRefreshTokenKey(token.RefreshToken), token, expires.Subtract(DateTime.UtcNow));
     }
-
+    
     /// <summary>
     /// 是否存在访问令牌
     /// </summary>
     /// <param name="token">访问令牌</param>
     public bool ExistsToken(string token) => _cache.ContainsKey(GetTokenKey(token));
+    
+    /// <summary>
+    /// 验证Token是否有效且存在于存储中
+    /// </summary>
+    /// <param name="token">访问令牌</param>
+    /// <param name="options">Jwt选项配置</param>
+    /// <param name="validator">Token验证器</param>
+    /// <returns>Token是否有效且存在</returns>
+    public bool IsValidAndExists(string token, JwtOptions options, IJsonWebTokenValidator validator)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        // 首先检查Token是否在存储中
+        if (!ExistsToken(token))
+            return false;
+
+        // 然后验证Token的有效性（签名和过期时间）
+        return validator.IsValidToken(token, options);
+    }
+
+    /// <summary>
+    /// 验证Token是否有效且存在于存储中 - 使用注入的配置和验证器
+    /// </summary>
+    /// <param name="token">访问令牌</param>
+    /// <returns>Token是否有效且存在</returns>
+    public bool IsValidAndExists(string token)
+    {
+        return IsValidAndExists(token, _jwtOptions.Value, _validator);
+    }
 
     /// <summary>
     /// 绑定用户设备令牌

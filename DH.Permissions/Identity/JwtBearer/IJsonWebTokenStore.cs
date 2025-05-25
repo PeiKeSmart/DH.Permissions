@@ -65,6 +65,13 @@ public interface IJsonWebTokenStore
     bool ExistsToken(string token);
 
     /// <summary>
+    /// 验证Token是否有效且存在于存储中 - 使用注入的配置和验证器
+    /// </summary>
+    /// <param name="token">访问令牌</param>
+    /// <returns>Token是否有效且存在</returns>
+    bool IsValidAndExists(string token);
+
+    /// <summary>
     /// 绑定用户设备令牌
     /// </summary>
     /// <param name="userId">用户标识</param>

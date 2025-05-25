@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 using NewLife.Serialization;
@@ -14,6 +15,17 @@ namespace DH.Permissions.Identity.JwtBearer.Internal;
 /// </summary>
 internal sealed class JsonWebTokenValidator : IJsonWebTokenValidator
 {
+    private readonly IOptions<JwtOptions> _jwtOptions;
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="jwtOptions">JWT选项配置</param>
+    public JsonWebTokenValidator(IOptions<JwtOptions> jwtOptions)
+    {
+        _jwtOptions = jwtOptions;
+    }
+    
     /// <summary>
     /// 校验
     /// </summary>
@@ -44,6 +56,72 @@ internal sealed class JsonWebTokenValidator : IJsonWebTokenValidator
         //    return false;
         // 进行自定义验证
         return validatePayload(payload, options);
+    }    
+    
+    /// <summary>
+    /// 简单校验Token有效性（只验证签名和过期时间）
+    /// </summary>
+    /// <param name="encodeJwt">加密后的Jwt令牌</param>
+    /// <param name="options">Jwt选项配置</param>
+    /// <returns>Token是否有效</returns>
+    public bool IsValidToken(string encodeJwt, JwtOptions options)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(encodeJwt) || string.IsNullOrWhiteSpace(options?.Secret))
+                return false;
+
+            var jwtArray = encodeJwt.Split('.');
+            if (jwtArray.Length < 3)
+                return false;
+
+            // 验证签名
+            var hs256 = new HMACSHA256(Encoding.UTF8.GetBytes(options.Secret));
+            var computedSign = Base64UrlEncoder.Encode(
+                hs256.ComputeHash(Encoding.UTF8.GetBytes(string.Concat(jwtArray[0], ".", jwtArray[1]))));
+            
+            if (!string.Equals(jwtArray[2], computedSign))
+                return false;
+
+            // 验证过期时间
+            var payload = JsonHelper.ToJsonEntity<Dictionary<string, string>>(Base64UrlEncoder.Decode(jwtArray[1]));
+            if (payload?.ContainsKey("exp") == true)
+            {
+                if (long.TryParse(payload["exp"], out var expTimeStamp))
+                {
+                    var expTime = DateTimeOffset.FromUnixTimeSeconds(expTimeStamp);
+                    if (expTime <= DateTimeOffset.UtcNow)
+                        return false;
+                }
+            }
+
+            // 验证生效时间
+            if (payload?.ContainsKey("nbf") == true)
+            {
+                if (long.TryParse(payload["nbf"], out var nbfTimeStamp))
+                {
+                    var nbfTime = DateTimeOffset.FromUnixTimeSeconds(nbfTimeStamp);
+                    if (nbfTime > DateTimeOffset.UtcNow)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 简单校验Token有效性（只验证签名和过期时间）- 使用注入的配置
+    /// </summary>
+    /// <param name="encodeJwt">加密后的Jwt令牌</param>
+    /// <returns>Token是否有效</returns>
+    public bool IsValidToken(string encodeJwt)
+    {
+        return IsValidToken(encodeJwt, _jwtOptions.Value);
     }
 
     /// <summary>
