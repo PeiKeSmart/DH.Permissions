@@ -1,5 +1,4 @@
 ﻿using NewLife.Caching;
-using NewLife.Log;
 
 namespace DH.Permissions.Identity.JwtBearer.Internal;
 
@@ -29,14 +28,14 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// <param name="token">令牌</param>
     /// <param name="payload">负载字典</param>
     /// <param name="expires">过期时间</param>
-    public void Save(string token, IDictionary<string, string> payload, DateTime expires) =>
+    public void Save(String token, IDictionary<String, String> payload, DateTime expires) =>
         _cache.Set(GetPayloadKey(token), payload, expires.Subtract(DateTime.UtcNow));
 
     /// <summary>
     /// 移除
     /// </summary>
     /// <param name="token">令牌</param>
-    public void Remove(string token)
+    public void Remove(String token)
     {
         if (!_cache.ContainsKey(GetPayloadKey(token)))
             return;
@@ -48,7 +47,7 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// </summary>
     /// <param name="token">令牌</param>
     /// <param name="expire">延时时间。秒</param>
-    public void Remove(string token, Int32 expire)
+    public void Remove(String token, Int32 expire)
     {
         var key = GetPayloadKey(token);
 
@@ -62,12 +61,12 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// 获取Payload
     /// </summary>
     /// <param name="token">令牌</param>
-    public IDictionary<string, string> Get(string token) =>
-        _cache.Get<IDictionary<string, string>>(GetPayloadKey(token));
+    public IDictionary<String, String> Get(String token) =>
+        _cache.Get<IDictionary<String, String>>(GetPayloadKey(token));
 
     /// <summary>
     /// 获取Payload缓存键
     /// </summary>
     /// <param name="token">令牌</param>
-    private static string GetPayloadKey(string token) => $"jwt:token:payload:{token}";
+    private static String GetPayloadKey(String token) => $"jwt:token:payload:{token}";
 }
