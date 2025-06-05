@@ -59,9 +59,9 @@
 
 	<ItemGroup>
     <PackageReference Include="IdentityModel" Version="7.0.0" />
-		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.9.0" />
-		<PackageReference Include="Pek.AspNetCore" Version="4.12.2025.515-beta0101" />
-		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.0" />
+		<PackageReference Include="Pek.AspNetCore" Version="4.12.2025.605-beta1115" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.0" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
