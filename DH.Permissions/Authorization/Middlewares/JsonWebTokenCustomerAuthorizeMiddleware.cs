@@ -2,8 +2,6 @@
 
 using Microsoft.Extensions.Options;
 
-using NewLife.Log;
-
 using Pek.Security;
 
 namespace DH.Permissions.Authorization.Middlewares;
@@ -66,36 +64,21 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
     /// <param name="context">Http上下文</param>
     public async Task Invoke(HttpContext context)
     {
-        var requestPath = context.Request.Path.Value;
-        XTrace.WriteLineSafe($"JWT中间件处理请求：{context.Request.Method} {requestPath}");
-        
         // 如果是匿名访问路径，则直接跳过
-        if (_anonymousPathList.Contains(requestPath))
+        if (_anonymousPathList.Contains(context.Request.Path.Value))
         {
-            XTrace.WriteLineSafe($"JWT中间件跳过匿名路径：{requestPath}");
             await _next(context).ConfigureAwait(false);
             return;
         }
 
         var result = context.Request.Headers.TryGetValue("Authorization", out var authStr);
         if (!result || String.IsNullOrWhiteSpace(authStr.ToString()))
-        {
-            XTrace.WriteLineSafe("JWT中间件授权失败：缺少Authorization头或值为空");
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
-        }
-        
-        var token = authStr.ToString()["Bearer ".Length..].Trim();
-        XTrace.WriteLineSafe($"JWT中间件提取Token：{token.Substring(0, Math.Min(20, token.Length))}...");
-        
         // 校验以及自定义校验
-        result = _tokenValidator.Validate(token, _options, _validatePayload);
+        result = _tokenValidator.Validate(authStr.ToString()["Bearer ".Length..].Trim(), _options,
+            _validatePayload);
         if (!result)
-        {
-            XTrace.WriteLineSafe("JWT中间件授权失败：Token验证失败（签名、过期时间或自定义验证）");
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
-        }
-        
-        XTrace.WriteLineSafe("JWT中间件授权成功");
         await _next(context).ConfigureAwait(false);
     }
 }

@@ -58,7 +58,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-    <PackageReference Include="DH.NCore" Version="4.12.2025.605-beta1219" />
     <PackageReference Include="IdentityModel" Version="7.0.0" />
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.0" />
 		<PackageReference Include="Pek.AspNetCore" Version="4.12.2025.606-beta0328" />

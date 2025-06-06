@@ -98,7 +98,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
             throw new ArgumentNullException(nameof(options.Secret),
                 $@"{nameof(options.Secret)}为Null或空字符串。请在""appsettings.json""配置""{nameof(JwtOptions)}""节点及其子节点""{nameof(JwtOptions.Secret)}""");
 
-        XTrace.WriteLineSafe($"获取到的负载：{payload.ToJson()}");
+        XTrace.WriteLine($"获取到的负载：{payload.ToJson()}");
 
         var clientId = payload.TryGetValue("clientId", out var ClientId) ? ClientId : Guid.NewGuid().ToString();
         var clientType = payload.TryGetValue("clientType", out var ClientType) ? ClientType : "admin";
