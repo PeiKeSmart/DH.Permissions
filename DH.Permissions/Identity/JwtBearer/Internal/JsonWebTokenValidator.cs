@@ -85,6 +85,25 @@ internal sealed class JsonWebTokenValidator : IJsonWebTokenValidator
             XTrace.WriteLine("JWT验证器失败：签名验证失败");
             XTrace.WriteLine($"JWT验证器签名差异分析：原始签名长度={jwtArray[2].Length}, 计算签名长度={computedSign.Length}");
             
+            // 打印完整的options对象JSON
+            try 
+            {
+                var optionsJson = options.ToJson();
+                XTrace.WriteLine($"JWT验证器完整配置信息：{optionsJson}");
+            }
+            catch (Exception ex)
+            {
+                XTrace.WriteLine($"JWT验证器配置序列化失败：{ex.Message}");
+                // 手动打印关键配置
+                XTrace.WriteLine($"JWT验证器关键配置 - Secret: {options.Secret}");
+                XTrace.WriteLine($"JWT验证器关键配置 - Issuer: {options.Issuer}");
+                XTrace.WriteLine($"JWT验证器关键配置 - Audience: {options.Audience}");
+                XTrace.WriteLine($"JWT验证器关键配置 - AccessExpireMinutes: {options.AccessExpireMinutes}");
+                XTrace.WriteLine($"JWT验证器关键配置 - RefreshExpireMinutes: {options.RefreshExpireMinutes}");
+                XTrace.WriteLine($"JWT验证器关键配置 - ThrowEnabled: {options.ThrowEnabled}");
+                XTrace.WriteLine($"JWT验证器关键配置 - SingleDeviceEnabled: {options.SingleDeviceEnabled}");
+            }
+            
             // 逐字符比较前面几个字符
             var minLength = Math.Min(jwtArray[2].Length, computedSign.Length);
             for (int i = 0; i < Math.Min(minLength, 20); i++)
