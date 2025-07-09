@@ -1,11 +1,8 @@
 ﻿using DH.Permissions.Identity.JwtBearer;
 
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 
 using Pek.Security;
-using Pek.Helpers;
 
 namespace DH.Permissions.Authorization.Middlewares;
 
@@ -76,47 +73,12 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
 
         var result = context.Request.Headers.TryGetValue("Authorization", out var authStr);
         if (!result || String.IsNullOrWhiteSpace(authStr.ToString()))
-        {
-            await WriteAuthorizeResult(context, 401, "未授权，请传递Header头的Authorization参数").ConfigureAwait(false);
-            return;
-        }
-        
+            throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
         // 校验以及自定义校验
         result = _tokenValidator.Validate(authStr.ToString()["Bearer ".Length..].Trim(), _options,
             _validatePayload);
         if (!result)
-        {
-            await WriteAuthorizeResult(context, 403, "验证失败，请查看传递的参数是否正确或是否有权限访问该地址。").ConfigureAwait(false);
-            return;
-        }
-        
+            throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
         await _next(context).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 写入授权错误响应
-    /// </summary>
-    /// <param name="context">Http上下文</param>
-    /// <param name="statusCode">状态码</param>
-    /// <param name="message">错误消息</param>
-    private async Task WriteAuthorizeResult(HttpContext context, int statusCode, string message)
-    {
-        context.Response.StatusCode = statusCode;
-        
-        var authorizeResult = new AuthorizeResult
-        {
-            Code = (StateCode)statusCode,
-            ErrCode = statusCode,
-            Message = message
-        };
-        
-        var actionContext = new ActionContext
-        {
-            HttpContext = context,
-            RouteData = new RouteData(),
-            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor()
-        };
-        
-        await authorizeResult.ExecuteResultAsync(actionContext).ConfigureAwait(false);
     }
 }

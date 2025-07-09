@@ -1,16 +1,14 @@
 ﻿using DH.Permissions.Identity.JwtBearer;
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 using NewLife;
 using NewLife.Log;
 using NewLife.Serialization;
-using Pek.Helpers;
+
 using Pek.Security;
 
 namespace DH.Permissions.Authorization.Policies;
@@ -73,7 +71,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
     /// <summary>
     /// 抛异常处理方式
     /// </summary>
-    protected virtual async void ThrowExceptionHandle(AuthorizationHandlerContext context,
+    protected virtual void ThrowExceptionHandle(AuthorizationHandlerContext context,
         JsonWebTokenAuthorizationRequirement requirement)
     {
         var httpContext = (context.Resource as AuthorizationFilterContext)?.HttpContext;
@@ -82,21 +80,12 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         // 未登录而被拒绝
         var result = httpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader);
         if (!result || String.IsNullOrWhiteSpace(authorizationHeader))
-        {
-            await WriteAuthorizeResult(httpContext, 401, "未授权，请传递Header头的Authorization参数").ConfigureAwait(false);
-            return;
-        }
+            throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
         var token = authorizationHeader.ToString().Split(' ').Last().Trim();
         if (!_tokenStore.ExistsToken(token))
-        {
-            await WriteAuthorizeResult(httpContext, 401, "未授权，无效参数").ConfigureAwait(false);
-            return;
-        }
+            throw new UnauthorizedAccessException("未授权，无效参数");
         if (!_tokenValidator.Validate(token, _options, requirement.ValidatePayload))
-        {
-            await WriteAuthorizeResult(httpContext, 403, "验证失败，请查看传递的参数是否正确或是否有权限访问该地址。").ConfigureAwait(false);
-            return;
-        }
+            throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
 
         // 兼容旧版本：校验From字段
         var payload = GetPayload(token);
@@ -109,8 +98,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         {
             if (!String.Equals(tokenFrom, requiredFrom, StringComparison.OrdinalIgnoreCase))
             {
-                await WriteAuthorizeResult(httpContext, 403, $"Token来源不符，要求From={requiredFrom}, 实际From={tokenFrom}").ConfigureAwait(false);
-                return;
+                throw new UnauthorizedAccessException($"Token来源不符，要求From={requiredFrom}, 实际From={tokenFrom}");
             }
         }
 
@@ -118,10 +106,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         {
             var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"], payload["clientType"]);
             if (bindDeviceInfo.DeviceId != payload["clientId"])
-            {
-                await WriteAuthorizeResult(httpContext, 403, "该账号已在其它设备登录").ConfigureAwait(false);
-                return;
-            }
+                throw new UnauthorizedAccessException("该账号已在其它设备登录");
         }
         var isAuthenticated = httpContext.User.Identity.IsAuthenticated;
         if (!isAuthenticated)
@@ -219,32 +204,5 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             throw new ArgumentException($"非有效Jwt令牌");
         var payload = JsonHelper.ToJsonEntity<Dictionary<String, String>>(Base64UrlEncoder.Decode(jwtArray[1]));
         return payload;
-    }
-
-    /// <summary>
-    /// 写入授权错误响应
-    /// </summary>
-    /// <param name="context">Http上下文</param>
-    /// <param name="statusCode">状态码</param>
-    /// <param name="message">错误消息</param>
-    private async Task WriteAuthorizeResult(HttpContext context, int statusCode, string message)
-    {
-        context.Response.StatusCode = statusCode;
-        
-        var authorizeResult = new AuthorizeResult
-        {
-            Code = (StateCode)statusCode,
-            ErrCode = statusCode,
-            Message = message
-        };
-        
-        var actionContext = new ActionContext
-        {
-            HttpContext = context,
-            RouteData = new RouteData(),
-            ActionDescriptor = new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor()
-        };
-        
-        await authorizeResult.ExecuteResultAsync(actionContext).ConfigureAwait(false);
     }
 }
