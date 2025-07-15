@@ -8,7 +8,7 @@
     <AssemblyTitle>JWT权限类库</AssemblyTitle>
     <Description>DH框架的JWT权限类库</Description>
     <Company>湖北登灏科技有限公司</Company>
-    <Copyright>©2020-2024 湖北登灏科技有限公司</Copyright>
+    <Copyright>©2020-2025 湖北登灏科技有限公司</Copyright>
     <VersionPrefix>4.00</VersionPrefix>
     <VersionSuffix>$([System.DateTime]::Now.ToString(`yyyy.MMdd`))</VersionSuffix>
     <Version>$(VersionPrefix).$(VersionSuffix)</Version>
@@ -59,9 +59,9 @@
 
 	<ItemGroup>
     <PackageReference Include="IdentityModel" Version="7.0.0" />
-		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.0" />
+		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.1" />
 		<PackageReference Include="Pek.AspNetCore" Version="4.12.2025.606-beta0328" />
-		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.0" />
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.12.1" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -69,10 +69,10 @@
 	</ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)'=='net8.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.16" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.18" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)'=='net9.0'">
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
   </ItemGroup>
 
 	<ItemGroup>
