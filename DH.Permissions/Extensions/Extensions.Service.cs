@@ -51,6 +51,7 @@ public static partial class Extensions
         services.TryAddSingleton<IJsonWebTokenCustomerAuthorizeOption, JsonWebTokenCustomerAuthorizeOption>();
         services.TryAddSingleton<IJsonWebTokenAuthorizationRequirement, JsonWebTokenAuthorizationRequirement>();
         services.TryAddSingleton<ITokenPayloadStore, TokenPayloadStore>();
+        services.TryAddSingleton<IUserTokenService, UserTokenService>();
         services.AddSingleton<IAuthorizationHandler, JsonWebTokenAuthorizationHandler>();
         services.AddAuthorization(o =>
         {
@@ -82,6 +83,7 @@ public static partial class Extensions
         services.TryAddSingleton<IJsonWebTokenCustomerAuthorizeOption, JsonWebTokenCustomerAuthorizeOption>();
         services.TryAddSingleton<IJsonWebTokenAuthorizationRequirement, JsonWebTokenAuthorizationRequirement>();
         services.TryAddSingleton<ITokenPayloadStore, TokenPayloadStore>();
+        services.TryAddSingleton<IUserTokenService, UserTokenService>();
         services.AddSingleton<IAuthorizationHandler, JsonWebTokenAuthorizationHandler>();
     }
 
