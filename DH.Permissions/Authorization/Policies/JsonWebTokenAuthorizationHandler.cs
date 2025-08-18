@@ -126,8 +126,8 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         if (_options.SingleDeviceEnabled)
         {
-            var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"], payload["clientType"]);
-            if (bindDeviceInfo.DeviceId != payload["clientId"])
+            var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"].SafeString(), payload["clientType"].SafeString());
+            if (bindDeviceInfo.DeviceId != payload["clientId"].SafeString())
                 throw new UnauthorizedAccessException("该账号已在其它设备登录");
         }
         var isAuthenticated = httpContext.User.Identity.IsAuthenticated;
@@ -218,9 +218,11 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         // 单设备登录
         if (_options.SingleDeviceEnabled)
         {
-            var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"], payload["clientType"]);
-            if (bindDeviceInfo.DeviceId != payload["clientId"])
+            var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"].SafeString(), payload["clientType"].SafeString());
+            if (bindDeviceInfo.DeviceId != payload["clientId"].SafeString())
             {
+                httpContext.Items["AuthFailureReason"] = "该账号已在其它设备登录";
+                httpContext.Items["AuthFailureCode"] = 40004;
                 context.Fail();
                 return;
             }
