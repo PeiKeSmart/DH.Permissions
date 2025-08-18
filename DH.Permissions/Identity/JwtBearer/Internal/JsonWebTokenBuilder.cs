@@ -1,6 +1,8 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
+using DH.Permissions.Security;
+
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -9,10 +11,12 @@ using NewLife.Log;
 using NewLife.Serialization;
 
 using Pek;
+using Pek.Configs;
 using Pek.Exceptions;
 using Pek.Helpers;
 using Pek.Security;
 using Pek.Timing;
+using Pek.Webs;
 
 namespace DH.Permissions.Identity.JwtBearer.Internal;
 
@@ -42,18 +46,26 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     private readonly JwtOptions _options;
 
     /// <summary>
+    /// HTTP上下文访问器
+    /// </summary>
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    /// <summary>
     /// 初始化一个<see cref="JsonWebTokenBuilder"/>类型的实例
     /// </summary>
     /// <param name="tokenStore">Jwt令牌存储器</param>
     /// <param name="tokenPayloadStore">令牌Payload存储器</param>
     /// <param name="options">Jwt选项配置</param>
+    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public JsonWebTokenBuilder(IJsonWebTokenStore tokenStore
         , ITokenPayloadStore tokenPayloadStore
-        , IOptions<JwtOptions> options)
+        , IOptions<JwtOptions> options
+        , IHttpContextAccessor httpContextAccessor)
     {
         _tokenStore = tokenStore;
         _tokenPayloadStore = tokenPayloadStore;
         _options = options.Value;
+        _httpContextAccessor = httpContextAccessor;
         if (_tokenHandler == null)
             _tokenHandler = new JwtSecurityTokenHandler();
     }
@@ -100,11 +112,33 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
 
         XTrace.WriteLine($"获取到的负载：{payload.ToJson()}");
 
-        var clientId = payload.TryGetValue("clientId", out var ClientId) ? ClientId : Guid.NewGuid().ToString();
-        var clientType = payload.TryGetValue("clientType", out var ClientType) ? ClientType : "admin";
+        // 获取真实设备ID
+        var httpContext = _httpContextAccessor.HttpContext;
+        var realDeviceId = httpContext != null ? DHWebHelper.FillDeviceId(httpContext) : Guid.NewGuid().ToString();
 
+        // 获取用户ID（提前获取，避免重复声明）
         var userId = GetUserId(payload);
         if (userId.IsEmpty()) throw new ArgumentException("不存在用户标识");
+
+        // 验证clientId与真实设备ID的一致性
+        var clientId = payload.TryGetValue("clientId", out var ClientId) ? ClientId : realDeviceId;
+
+        // 检查是否允许跨设备使用Token（测试环境开关）
+        var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
+
+        if (httpContext != null && clientId != realDeviceId && !allowCrossDevice)
+        {
+            SecurityLogger.LogDeviceIdMismatch(httpContext, clientId, realDeviceId, userId, new { Action = "TokenCreation" });
+            throw new UnauthorizedAccessException("设备标识不匹配，疑似非法请求");
+        }
+        else if (httpContext != null && clientId != realDeviceId && allowCrossDevice)
+        {
+            XTrace.WriteLine($"[开发模式] 允许跨设备Token创建: clientId={clientId}, realDeviceId={realDeviceId}, userId={userId}");
+        }
+
+        // 确保使用真实设备ID作为clientId
+        clientId = realDeviceId;
+        var clientType = payload.TryGetValue("clientType", out var ClientType) ? ClientType : "admin";
 
         if (!payload.TryGetValue("From", out var From)) throw new ArgumentException("不包含来源标识");
 

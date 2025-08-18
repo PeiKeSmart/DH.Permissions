@@ -45,6 +45,7 @@ public static partial class Extensions
     {
         services.Configure<JwtOptions>(o => configuration.GetSection(nameof(JwtOptions)).Bind(o));
         var options = GetOptions(configuration);
+        services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.TryAddSingleton<IJsonWebTokenBuilder, JsonWebTokenBuilder>();
         services.TryAddSingleton<IJsonWebTokenStore, JsonWebTokenStore>();
         services.TryAddSingleton<IJsonWebTokenValidator, JsonWebTokenValidator>();
@@ -76,7 +77,8 @@ public static partial class Extensions
     /// <param name="jwtOptions">配置</param>
     public static void AddJwt(this IServiceCollection services, Action<JwtOptions> jwtOptions)
     {
-        services.Configure(jwtOptions); 
+        services.Configure(jwtOptions);
+        services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.TryAddSingleton<IJsonWebTokenBuilder, JsonWebTokenBuilder>();
         services.TryAddSingleton<IJsonWebTokenStore, JsonWebTokenStore>();
         services.TryAddSingleton<IJsonWebTokenValidator, JsonWebTokenValidator>();

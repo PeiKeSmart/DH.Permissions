@@ -1,4 +1,5 @@
 ﻿using DH.Permissions.Identity.JwtBearer;
+using DH.Permissions.Security;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -9,7 +10,11 @@ using NewLife;
 using NewLife.Log;
 using NewLife.Serialization;
 
+using Pek;
+using Pek.Configs;
+using Pek.Helpers;
 using Pek.Security;
+using Pek.Webs;
 
 namespace DH.Permissions.Authorization.Policies;
 
@@ -102,6 +107,23 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             }
         }
 
+        // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
+        var currentDeviceId = DHWebHelper.FillDeviceId(httpContext);
+        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
+        var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
+
+        if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
+        {
+            var userId = payload.GetOrDefault("sub", "未知").ToString();
+            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, new { Action = "TokenValidation", Method = "ThrowException" });
+            throw new UnauthorizedAccessException($"设备标识不匹配，Token无法在此设备使用");
+        }
+        else if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && allowCrossDevice)
+        {
+            var userId = payload.GetOrDefault("sub", "未知").ToString();
+            XTrace.WriteLine($"[开发模式] 允许跨设备Token验证: tokenClientId={tokenClientId}, currentDeviceId={currentDeviceId}, userId={userId}");
+        }
+
         if (_options.SingleDeviceEnabled)
         {
             var bindDeviceInfo = _tokenStore.GetUserDeviceToken(payload["sub"], payload["clientType"]);
@@ -171,6 +193,26 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
                 context.Fail();
                 return;
             }
+        }
+
+        // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
+        var currentDeviceId = DHWebHelper.FillDeviceId(httpContext);
+        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
+        var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
+
+        if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
+        {
+            var userId = payload.GetOrDefault("sub", "未知").ToString();
+            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, new { Action = "TokenValidation", Method = "ResultHandle" });
+            httpContext.Items["AuthFailureReason"] = "设备标识不匹配，Token无法在此设备使用";
+            httpContext.Items["AuthFailureCode"] = 40005;
+            context.Fail();
+            return;
+        }
+        else if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && allowCrossDevice)
+        {
+            var userId = payload.GetOrDefault("sub", "未知").ToString();
+            XTrace.WriteLine($"[开发模式] 允许跨设备Token验证: tokenClientId={tokenClientId}, currentDeviceId={currentDeviceId}, userId={userId}");
         }
 
         // 单设备登录
