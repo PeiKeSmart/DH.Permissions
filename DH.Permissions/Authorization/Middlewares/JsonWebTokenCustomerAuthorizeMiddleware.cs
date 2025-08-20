@@ -1,4 +1,5 @@
 ﻿using DH.Permissions.Identity.JwtBearer;
+using DH.Permissions.Identity.JwtBearer.Internal;
 
 using Microsoft.Extensions.Options;
 
@@ -74,11 +75,20 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
         var result = context.Request.Headers.TryGetValue("Authorization", out var authStr);
         if (!result || String.IsNullOrWhiteSpace(authStr.ToString()))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
-        // 校验以及自定义校验
-        result = _tokenValidator.Validate(authStr.ToString()["Bearer ".Length..].Trim(), _options,
-            _validatePayload);
-        if (!result)
+
+        var token = authStr.ToString()["Bearer ".Length..].Trim();
+
+        // 尝试从缓存获取验证结果，如果没有则进行验证并缓存
+        var validationResult = TokenValidationCache.GetCachedResult(context, token);
+        if (validationResult == null)
+        {
+            validationResult = _tokenValidator.ValidateWithResult(token, _options, _validatePayload);
+            TokenValidationCache.SetCachedResult(context, token, validationResult);
+        }
+
+        if (!validationResult.IsValid)
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
+
         await _next(context).ConfigureAwait(false);
     }
 }

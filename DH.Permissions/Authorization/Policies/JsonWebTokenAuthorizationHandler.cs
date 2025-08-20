@@ -1,4 +1,5 @@
 ﻿using DH.Permissions.Identity.JwtBearer;
+using DH.Permissions.Identity.JwtBearer.Internal;
 using DH.Permissions.Security;
 
 using Microsoft.AspNetCore.Authorization;
@@ -89,11 +90,21 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         var token = authorizationHeader.ToString().Split(' ').Last().Trim();
         if (!_tokenStore.ExistsToken(token))
             throw new UnauthorizedAccessException("未授权，无效参数");
-        if (!_tokenValidator.Validate(token, _options, requirement.ValidatePayload))
+
+        // 尝试从缓存获取验证结果，如果没有则进行验证并缓存
+        var validationResult = TokenValidationCache.GetCachedResult(httpContext, token);
+        if (validationResult == null)
+        {
+            validationResult = _tokenValidator.ValidateWithResult(token, _options, requirement.ValidatePayload);
+            TokenValidationCache.SetCachedResult(httpContext, token, validationResult);
+        }
+
+        if (!validationResult.IsValid)
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
 
+        var payload = validationResult.Payload;
+
         // 兼容旧版本：校验From字段
-        var payload = GetPayload(token);
         var endpoint = httpContext.GetEndpoint();
         var fromAttribute = endpoint?.Metadata.GetMetadata<JwtAuthorizeAttribute>();
         var requiredFrom = fromAttribute?.From;
@@ -164,7 +175,15 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         }
 
-        if (!_tokenValidator.Validate(token, _options, requirement.ValidatePayload))
+        // 尝试从缓存获取验证结果，如果没有则进行验证并缓存
+        var validationResult = TokenValidationCache.GetCachedResult(httpContext, token);
+        if (validationResult == null)
+        {
+            validationResult = _tokenValidator.ValidateWithResult(token, _options, requirement.ValidatePayload);
+            TokenValidationCache.SetCachedResult(httpContext, token, validationResult);
+        }
+
+        if (!validationResult.IsValid)
         {
             context.Fail();
             return;
@@ -178,7 +197,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         }
 
-        var payload = GetPayload(token);
+        var payload = validationResult.Payload;
 
         // 兼容旧版本：校验From字段
         var endpoint = httpContext.GetEndpoint();
@@ -237,16 +256,5 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         context.Succeed(requirement);
     }
 
-    /// <summary>
-    /// 获取Payload
-    /// </summary>
-    /// <param name="encodeJwt">加密后的Jwt令牌</param>
-    private IDictionary<String, String> GetPayload(String encodeJwt)
-    {
-        var jwtArray = encodeJwt.Split('.');
-        if (jwtArray.Length < 3)
-            throw new ArgumentException($"非有效Jwt令牌");
-        var payload = JsonHelper.ToJsonEntity<Dictionary<String, String>>(Base64UrlEncoder.Decode(jwtArray[1]));
-        return payload;
-    }
+
 }
