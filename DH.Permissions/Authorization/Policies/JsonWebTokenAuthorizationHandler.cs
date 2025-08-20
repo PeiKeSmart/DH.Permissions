@@ -88,7 +88,10 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         if (!result || String.IsNullOrWhiteSpace(authorizationHeader))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
         var token = authorizationHeader.ToString().Split(' ').Last().Trim();
-        if (!_tokenStore.ExistsToken(token))
+
+        // 优化：一次性获取Token对象，避免重复缓存查询
+        var accessToken = _tokenStore.GetToken(token);
+        if (accessToken == null)
             throw new UnauthorizedAccessException("未授权，无效参数");
 
         // 尝试从缓存获取验证结果，如果没有则进行验证并缓存
@@ -101,6 +104,10 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         if (!validationResult.IsValid)
             throw new UnauthorizedAccessException("验证失败，请查看传递的参数是否正确或是否有权限访问该地址。");
+
+        // 检查Token是否过期（使用已获取的accessToken对象）
+        if (accessToken.IsExpired())
+            throw new UnauthorizedAccessException("Token已过期");
 
         var payload = validationResult.Payload;
 
@@ -119,7 +126,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         }
 
         // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
-        var currentDeviceId = DHWebHelper.FillDeviceId(httpContext);
+        var currentDeviceId = DeviceIdCache.GetDeviceId(httpContext);
         var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
         var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
 
@@ -169,7 +176,10 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         }
 
         var token = authorizationHeader.ToString().Split(' ').Last().Trim();
-        if (!_tokenStore.ExistsToken(token))
+
+        // 优化：一次性获取Token对象，避免重复缓存查询
+        var accessToken = _tokenStore.GetToken(token);
+        if (accessToken == null)
         {
             context.Fail();
             return;
@@ -189,8 +199,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         }
 
-        // 登录超时
-        var accessToken = _tokenStore.GetToken(token);
+        // 检查Token是否过期（使用已获取的accessToken对象）
         if (accessToken.IsExpired())
         {
             context.Fail();
@@ -215,7 +224,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         }
 
         // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
-        var currentDeviceId = DHWebHelper.FillDeviceId(httpContext);
+        var currentDeviceId = DeviceIdCache.GetDeviceId(httpContext);
         var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
         var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
 

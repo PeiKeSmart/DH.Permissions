@@ -1,7 +1,10 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.Collections.Concurrent;
+
+using Microsoft.Extensions.Options;
 
 using NewLife;
 using NewLife.Caching;
+using NewLife.Log;
 
 using Pek.Security;
 
@@ -10,7 +13,7 @@ namespace DH.Permissions.Identity.JwtBearer.Internal;
 /// <summary>
 /// Jwt令牌存储器
 /// </summary>
-internal sealed class JsonWebTokenStore : IJsonWebTokenStore
+internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
 {
     /// <summary>
     /// 缓存
@@ -34,9 +37,14 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
 
     /// <summary>
     /// 用户Token集合操作信号量（针对MemoryCache下的HashSet并发安全）
+    /// 优化：使用ConcurrentDictionary避免全局锁竞争
     /// </summary>
-    private readonly Dictionary<String, SemaphoreSlim> _userTokenSemaphores = new();
-    private readonly SemaphoreSlim _semaphoreDict = new(1, 1);
+    private readonly ConcurrentDictionary<String, SemaphoreSlim> _userTokenSemaphores = new();
+
+    /// <summary>
+    /// 信号量清理的定时器（可选的内存优化）
+    /// </summary>
+    private readonly Timer _semaphoreCleanupTimer;
 
     /// <summary>
     /// 初始化一个<see cref="JsonWebTokenStore"/>类型的实例
@@ -55,6 +63,9 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
         var cacheProvider = Pek.Webs.HttpContext.Current.RequestServices.GetService<ICacheProvider>();
         if (cacheProvider != null && cacheProvider.Cache != cacheProvider.InnerCache && cacheProvider.Cache is not MemoryCache)
             _isRedis = true;
+
+        // 初始化信号量清理定时器（每5分钟清理一次未使用的信号量）
+        _semaphoreCleanupTimer = new Timer(CleanupUnusedSemaphores, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
     /// <summary>
@@ -268,49 +279,74 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
 
     /// <summary>
     /// 获取用户级别的信号量，用于保证Token集合操作的并发安全
+    /// 优化：使用ConcurrentDictionary.GetOrAdd避免锁竞争
     /// </summary>
     /// <param name="userId">用户ID</param>
     /// <returns>用户专用的信号量</returns>
     private SemaphoreSlim GetUserSemaphore(String userId)
     {
-        _semaphoreDict.Wait();
-        try
-        {
-            if (!_userTokenSemaphores.TryGetValue(userId, out var semaphore))
-            {
-                semaphore = new SemaphoreSlim(1, 1);
-                _userTokenSemaphores[userId] = semaphore;
-            }
-            return semaphore;
-        }
-        finally
-        {
-            _semaphoreDict.Release();
-        }
+        return _userTokenSemaphores.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
     }
 
     /// <summary>
     /// 清理未使用的用户信号量（可选的内存优化）
+    /// 优化：使用ConcurrentDictionary.TryRemove避免锁竞争
     /// </summary>
     /// <param name="userId">用户ID</param>
     private void CleanupUserSemaphore(String userId)
     {
-        _semaphoreDict.Wait();
-        try
+        if (_userTokenSemaphores.TryGetValue(userId, out var semaphore))
         {
-            if (_userTokenSemaphores.TryGetValue(userId, out var semaphore))
+            // 检查是否有等待的线程，如果没有则可以安全移除
+            if (semaphore.CurrentCount == 1)
             {
-                // 检查是否有等待的线程，如果没有则可以安全移除
-                if (semaphore.CurrentCount == 1)
+                if (_userTokenSemaphores.TryRemove(userId, out var removedSemaphore))
                 {
-                    _userTokenSemaphores.Remove(userId);
-                    semaphore.Dispose();
+                    removedSemaphore.Dispose();
                 }
             }
         }
-        finally
+    }
+
+    /// <summary>
+    /// 定时清理未使用的信号量（内存优化）
+    /// </summary>
+    /// <param name="state">定时器状态</param>
+    private void CleanupUnusedSemaphores(Object state)
+    {
+        try
         {
-            _semaphoreDict.Release();
+            var keysToRemove = new List<String>();
+
+            // 遍历所有信号量，找出未使用的
+            foreach (var kvp in _userTokenSemaphores)
+            {
+                var semaphore = kvp.Value;
+                // 如果信号量当前计数为1且没有等待线程，说明未被使用
+                if (semaphore.CurrentCount == 1)
+                {
+                    keysToRemove.Add(kvp.Key);
+                }
+            }
+
+            // 移除未使用的信号量
+            foreach (var key in keysToRemove)
+            {
+                if (_userTokenSemaphores.TryRemove(key, out var semaphore))
+                {
+                    semaphore.Dispose();
+                }
+            }
+
+            // 记录清理结果（可选）
+            if (keysToRemove.Count > 0)
+            {
+                XTrace.WriteLine($"清理了 {keysToRemove.Count} 个未使用的用户信号量");
+            }
+        }
+        catch (Exception ex)
+        {
+            XTrace.WriteException(ex);
         }
     }
 
@@ -709,6 +745,27 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore
     /// </summary>
     /// <param name="userId">用户标识</param>
     private static String GetUserTokensKey(String userId) => $"jwt:user:tokens:{userId}";
+
+    #endregion
+
+    #region IDisposable实现
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        // 停止清理定时器
+        _semaphoreCleanupTimer?.Dispose();
+
+        // 释放所有用户信号量
+        foreach (var semaphore in _userTokenSemaphores.Values)
+        {
+            semaphore?.Dispose();
+        }
+
+        _userTokenSemaphores.Clear();
+    }
 
     #endregion
 }
