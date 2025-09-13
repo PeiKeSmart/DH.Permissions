@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Http;
+﻿using System.Text.Json;
+
 using NewLife.Log;
-using System.Text.Json;
 
 namespace DH.Permissions.Security;
 
@@ -17,7 +17,8 @@ public static class SecurityLogger
     /// <param name="currentDeviceId">当前设备ID</param>
     /// <param name="userId">用户ID</param>
     /// <param name="additionalInfo">附加信息</param>
-    public static void LogDeviceIdMismatch(HttpContext httpContext, string tokenClientId, string currentDeviceId, string userId, object additionalInfo = null)
+    /// <param name="from">来源</param>
+    public static void LogDeviceIdMismatch(HttpContext httpContext, String tokenClientId, String currentDeviceId, String userId, String from, Object additionalInfo = null)
     {
         var logData = new
         {
@@ -40,7 +41,7 @@ public static class SecurityLogger
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
 
-        XTrace.WriteLine($"[SECURITY_ALERT] {logMessage}");
+        XTrace.WriteLine($"[SECURITY_ALERT:{from}] {logMessage}");
     }
 
     /// <summary>

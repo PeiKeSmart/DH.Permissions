@@ -128,7 +128,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
 
         if (httpContext != null && clientId != realDeviceId && !allowCrossDevice)
         {
-            SecurityLogger.LogDeviceIdMismatch(httpContext, clientId, realDeviceId, userId, new { Action = "TokenCreation" });
+            SecurityLogger.LogDeviceIdMismatch(httpContext, clientId, realDeviceId, userId, "JsonWebTokenBuilder_Create", new { Action = "TokenCreation" });
             if (!SecuritySetting.Current.AllowCrossDevice)
                 throw new UnauthorizedAccessException("设备标识不匹配，疑似非法请求");
         }

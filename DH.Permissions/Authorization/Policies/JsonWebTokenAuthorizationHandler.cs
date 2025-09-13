@@ -5,17 +5,14 @@ using DH.Permissions.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 using NewLife;
 using NewLife.Log;
-using NewLife.Serialization;
 
 using Pek;
 using Pek.Configs;
 using Pek.Helpers;
 using Pek.Security;
-using Pek.Webs;
 
 namespace DH.Permissions.Authorization.Policies;
 
@@ -133,8 +130,9 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
         {
             var userId = payload.GetOrDefault("sub", "未知").ToString();
-            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, new { Action = "TokenValidation", Method = "ThrowException" });
-            throw new UnauthorizedAccessException($"设备标识不匹配，Token无法在此设备使用");
+            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, "JsonWebTokenAuthorizationHandler_ThrowExceptionHandle", new { Action = "TokenValidation", Method = "ThrowException" });
+            if (!SecuritySetting.Current.AllowCrossDevice)
+                throw new UnauthorizedAccessException($"设备标识不匹配，Token无法在此设备使用");
         }
         else if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && allowCrossDevice)
         {
@@ -231,11 +229,15 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
         {
             var userId = payload.GetOrDefault("sub", "未知").ToString();
-            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, new { Action = "TokenValidation", Method = "ResultHandle" });
-            httpContext.Items["AuthFailureReason"] = "设备标识不匹配，Token无法在此设备使用";
-            httpContext.Items["AuthFailureCode"] = 40005;
-            context.Fail();
-            return;
+            SecurityLogger.LogDeviceIdMismatch(httpContext, tokenClientId, currentDeviceId, userId, "JsonWebTokenAuthorizationHandler_ResultHandle", new { Action = "TokenValidation", Method = "ResultHandle" });
+
+            if (!SecuritySetting.Current.AllowCrossDevice)
+            {
+                httpContext.Items["AuthFailureReason"] = "设备标识不匹配，Token无法在此设备使用";
+                httpContext.Items["AuthFailureCode"] = 40005;
+                context.Fail();
+                return;
+            }
         }
         else if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && allowCrossDevice)
         {
