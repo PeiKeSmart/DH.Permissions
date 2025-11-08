@@ -198,6 +198,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// 刷新令牌
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken) => Refresh(refreshToken, _options);
 
     /// <summary>
@@ -205,6 +206,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken, Double RefreshExpireMinutes)
     {
         var options = _options.DeepCloneWithJson();
@@ -222,10 +224,12 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="options"></param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken, JwtOptions options)
     {
         if (String.IsNullOrWhiteSpace(refreshToken))
-            throw new ArgumentNullException(nameof(refreshToken));
+            throw new JwtRefreshException("刷新令牌不存在或已过期", 9994);
+            
         var parameters = new TokenValidationParameters()
         {
             ValidIssuer = options.Issuer,
@@ -241,7 +245,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
                 _tokenPayloadStore.Remove(refreshToken);
             }
 
-            throw new Warning("刷新令牌不存在或已过期");
+            throw new JwtRefreshException("刷新令牌不存在或已过期", 9994);
         }
 
         var principal = _tokenHandler.ValidateToken(refreshToken, parameters, out var securityToken);
@@ -260,6 +264,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// </summary>
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="expire">延时时间。秒</param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken, Int32 expire) => Refresh(refreshToken, expire, _options);
 
     /// <summary>
@@ -268,6 +273,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="expire">延时时间。秒</param>
     /// <param name="RefreshExpireMinutes">刷新令牌有效期分钟数</param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken, Int32 expire, Double RefreshExpireMinutes)
     {
         var options = _options.DeepCloneWithJson();
@@ -286,10 +292,12 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
     /// <param name="refreshToken">刷新令牌</param>
     /// <param name="expire">延时时间。秒</param>
     /// <param name="options"></param>
+    /// <returns>刷新成功返回新令牌,失败抛出JwtRefreshException异常(ErrCode=9994)</returns>
     public JsonWebToken Refresh(String refreshToken, Int32 expire, JwtOptions options)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
-            throw new ArgumentNullException(nameof(refreshToken));
+            throw new JwtRefreshException("刷新令牌不存在或已过期", 9994);
+            
         var parameters = new TokenValidationParameters()
         {
             ValidIssuer = _options.Issuer,
@@ -305,7 +313,7 @@ internal sealed class JsonWebTokenBuilder : IJsonWebTokenBuilder
                 _tokenPayloadStore.Remove(refreshToken);
             }
 
-            throw new Warning("刷新令牌不存在或已过期");
+            throw new JwtRefreshException("刷新令牌不存在或已过期", 9994);
         }
 
         var principal = _tokenHandler.ValidateToken(refreshToken, parameters, out var securityToken);
