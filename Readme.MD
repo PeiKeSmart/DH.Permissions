@@ -601,6 +601,85 @@ catch (JwtRefreshException ex)
 - `UserTokenServiceTest.cs` - 用户Token服务测试
 - `TokenRefreshControllerExample.cs` - Token刷新控制器示例
 
+## 故障排查: 403 Forbidden（接口返回403）
+
+如果接口在传入正确 Token 的情况下返回 403（Forbidden），通常说明请求已通过身份认证，但**未通过授权策略/自定义校验**。下面是常见原因和排查步骤：
+
+1. Token 有效但 Payload 未通过自定义验证。
+    - 触发点：`IJsonWebTokenValidator.ValidateWithResult(..., validatePayload)` 或授权处理器 `JsonWebTokenAuthorizationHandler`。
+    - 排查：检查 `validatePayload` 回调实现，确认必要字段（如 `sub`, `clientId`, `From` 等）存在并正确。
+
+2. 设备ID 不匹配或禁止跨设备使用。
+    - 触发点：在授权处理器 `JsonWebTokenAuthorizationHandler` 中，会比较 token 中的 `clientId` 与当前设备ID（`DeviceIdCache.GetDeviceId`）。
+    - 排查：确认 `PekSysSetting.Current.AllowJwtCrossDevice` 是否为 `true`（开发模式），或 token 中的 `clientId` 与设备ID一致。服务器端会写日志 `SecurityLogger.LogDeviceIdMismatch`。
+
+3. 单设备登录限制（SingleDeviceEnabled）被触发。
+    - 触发点：`JsonWebTokenAuthorizationHandler` 在 `SingleDeviceEnabled` 开启时校验绑定设备信息（`IJsonWebTokenStore.GetUserDeviceToken`），若不一致则拒绝。
+    - 排查：在 token 生成时是否保存了正确的设备绑定信息，或检查 `IJsonWebTokenStore` 中的记录。
+
+4. Token 在 TokenStore 中不存在或已失效（但仍被认证）
+    - 触发点：授权处理器会通过 `_tokenStore.GetToken(token)` 来确保 token 在服务端存储（例如支持下线、清除）。如果为空或过期会 `context.Fail()`。
+    - 排查：确认 token 是否存在于 `IJsonWebTokenStore`，是否被清除或过期。
+
+5. `From` 字段不匹配（自定义 JwtAuthorize 特性）
+    - 触发点：`JwtAuthorizeAttribute` 指定某个 `From` 值，若 token 中 `From` 不一致则授权失败。
+    - 排查：确认 Controller/Action 使用 `JwtAuthorize` 时指定的 `From` 值与 token 中的 `From` 一致。
+
+6. 其他自定义逻辑或权限校验失败
+    - 排查：审查 `validatePayload` 和任何自定义授权逻辑；检查是否有额外的要求（角色、范围等）导致授权失败。
+
+调试与排查建议
+
+1. 打开服务端日志，定位 `SecurityLogger` 相关条目（例如设备 ID 不匹配会记录）。
+2. 在开发环境中设置 `JwtOptions.ThrowEnabled = true`（或者 `ThrowEnabled` 对应的配置），可以让授权处理器抛出 `UnauthorizedAccessException`，便于查看明确异常原因（仅在开发时打开）。
+3. 使用 `TokenValidationCache` 缓存结果时，确保没有触发缓存不一致导致的授权问题；清理缓存后重试。
+4. 对于 403 响应，优先在 `JsonWebTokenAuthorizationHandler` 的 `ResultHandle` 分支中查找 `context.Fail()` 的条件：签名/过期校验通过但自定义校验、设备绑定、单设备校验失败。
+5. 在 `Startup` 中添加一个中间件用于调试：当响应状态为 403 时，打印 `HttpContext.Items["AuthFailureReason"]` 或 `AuthFailureCode` 的值（授权处理器会在某些情况下写入这两个字段）。
+
+示例：记录 403 原因的调试中间件
+
+```csharp
+public class JwtAuthFailureLoggingMiddleware
+{
+     private readonly RequestDelegate _next;
+
+     public JwtAuthFailureLoggingMiddleware(RequestDelegate next) => _next = next;
+
+     public async Task Invoke(HttpContext context)
+     {
+          await _next(context);
+
+          if (context.Response.StatusCode == StatusCodes.Status403Forbidden)
+          {
+                // 探查授权失败信息（若授权处理器设置了）
+                if (context.Items.TryGetValue("AuthFailureReason", out var reason))
+                {
+                     // 记录日志或输出到控制台
+                     Console.WriteLine($"JWT Auth Failure Reason: {reason}");
+                }
+
+                if (context.Items.TryGetValue("AuthFailureCode", out var code))
+                {
+                     Console.WriteLine($"JWT Auth Failure Code: {code}");
+                }
+          }
+     }
+}
+
+// 注册方式（仅用于排查）
+// app.UseMiddleware<JwtAuthFailureLoggingMiddleware>();
+```
+
+其它快速校验项
+
+- 确认 Authorization Header: `Authorization: Bearer <token>`
+- 确认服务端 `JwtOptions.Secret`、`Issuer`、`Audience` 与 token 一致
+- 确认 token 未过期（注意 `exp` 单位应为秒）
+- 确认 payload 中 `sub`、`clientId`、`From` 等字段是否缺失或错误
+- 如果使用 `UseJwtCustomerAuthorize`（自定义中间件），它会直接抛 Unauthorized （401）而不是返回 403
+
+如果你愿意，我可以把这个调试中间件整合为一个示例并加入到 `Examples/` 目录，也可以在 README 中加入示例日志截图或命令行测试脚本。
+
 ## 许可证
 
 MIT License
