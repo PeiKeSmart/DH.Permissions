@@ -87,14 +87,17 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     /// <param name="token">刷新令牌</param>
     public void RemoveRefreshToken(String token)
     {
-        if (!_cache.ContainsKey(GetRefreshTokenKey(token)))
+        var refreshTokenKey = GetRefreshTokenKey(token);
+        if (_cache.Remove(refreshTokenKey) <= 0)
             return;
-        _cache.Remove(GetRefreshTokenKey(token));
-        if (!_cache.ContainsKey(GetBindRefreshTokenKey(token)))
+
+        var bindRefreshTokenKey = GetBindRefreshTokenKey(token);
+        if (!_cache.TryGetValue<JsonWebToken>(bindRefreshTokenKey, out var accessToken))
             return;
-        var accessToken = _cache.Get<JsonWebToken>(GetBindRefreshTokenKey(token));
-        _cache.Remove(GetBindRefreshTokenKey(token));
-        RemoveToken(accessToken.AccessToken);
+
+        _cache.Remove(bindRefreshTokenKey);
+        if (accessToken != null)
+            RemoveToken(accessToken.AccessToken);
     }
 
     /// <summary>
@@ -106,17 +109,18 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     {
         var key = GetRefreshTokenKey(token);
         var key1 = GetBindRefreshTokenKey(token);
+        var expireTime = TimeSpan.FromSeconds(expire);
 
-        if (!_cache.ContainsKey(key))
+        if (!_cache.SetExpire(key, expireTime))
             return;
-        _cache.SetExpire(key, TimeSpan.FromSeconds(expire));
 
-        if (!_cache.ContainsKey(key1))
+        if (!_cache.TryGetValue<JsonWebToken>(key1, out var accessToken))
             return;
-        _cache.SetExpire(key1, TimeSpan.FromSeconds(expire));
 
-        var accessToken = _cache.Get<JsonWebToken>(key1);
-        RemoveToken(accessToken.AccessToken, expire);
+        _cache.SetExpire(key1, expireTime);
+
+        if (accessToken != null)
+            RemoveToken(accessToken.AccessToken, expire);
     }
 
     /// <summary>
@@ -141,11 +145,11 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     /// <param name="removeUserAssociation">是否移除用户关联</param>
     private void RemoveTokenInternal(String token, Boolean removeUserAssociation)
     {
-        if (!_cache.ContainsKey(GetTokenKey(token)))
+        var tokenKey = GetTokenKey(token);
+        if (!_cache.TryGetValue<JsonWebToken>(tokenKey, out var jsonWebToken))
             return;
 
         // 获取token信息以找到userId
-        var jsonWebToken = _cache.Get<JsonWebToken>(GetTokenKey(token));
         if (jsonWebToken != null && removeUserAssociation)
         {
             var userId = jsonWebToken.UId.ToString();
@@ -153,7 +157,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
             RemoveUserToken(userId, token);
         }
 
-        _cache.Remove(GetTokenKey(token));
+        _cache.Remove(tokenKey);
     }
     
     /// <summary>
@@ -164,12 +168,12 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     public void RemoveToken(String token, Int32 expire)
     {
         var key = GetTokenKey(token);
+        var expireTime = TimeSpan.FromSeconds(expire);
 
-        if (!_cache.ContainsKey(key))
+        if (!_cache.TryGetValue<JsonWebToken>(key, out var jsonWebToken))
             return;
 
         // 获取token信息以找到userId（延时移除时也需要清理用户关联）
-        var jsonWebToken = _cache.Get<JsonWebToken>(key);
         if (jsonWebToken != null)
         {
             var userId = jsonWebToken.UId.ToString();
@@ -177,7 +181,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
             RemoveUserToken(userId, token);
         }
 
-        _cache.SetExpire(key, TimeSpan.FromSeconds(expire));
+        _cache.SetExpire(key, expireTime);
     }
 
     /// <summary>
@@ -455,7 +459,7 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
 
             if (existingTokens.Count > 0)
             {
-                _cache.Set(userTokensKey, existingTokens);
+                SetUserTokensForRedis(userTokensKey, existingTokens);
             }
             else
             {
@@ -471,39 +475,8 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     /// <returns>Token列表</returns>
     private IEnumerable<String> GetUserAccessTokensForRedis(String userId)
     {
-        var userTokensKey = GetUserTokensKey(userId);
-        var tokens = _cache.Get<HashSet<String>>(userTokensKey) ?? new HashSet<String>();
-
-        // 过滤掉已过期的token
-        var validTokens = new HashSet<String>();
-        var hasExpiredTokens = false;
-
-        foreach (var token in tokens)
-        {
-            if (_cache.ContainsKey(GetTokenKey(token)))
-            {
-                validTokens.Add(token);
-            }
-            else
-            {
-                hasExpiredTokens = true;
-            }
-        }
-
-        // 如果有过期token，更新缓存
-        if (hasExpiredTokens && validTokens.Count != tokens.Count)
-        {
-            if (validTokens.Count > 0)
-            {
-                _cache.Set(userTokensKey, validTokens);
-            }
-            else
-            {
-                _cache.Remove(userTokensKey);
-            }
-        }
-
-        return validTokens.ToList();
+        var tokenState = GetValidUserTokenStateForRedis(userId);
+        return tokenState.ValidTokens.ToList();
     }
 
     /// <summary>
@@ -512,14 +485,19 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
     /// <param name="userId">用户标识</param>
     private void RemoveAllUserTokensForRedis(String userId)
     {
-        var tokens = GetUserAccessTokensForRedis(userId);
-
-        foreach (var accessToken in tokens)
+        var userTokensKey = GetUserTokensKey(userId);
+        var tokenState = GetValidUserTokenStateForRedis(userId);
+        if (tokenState.ValidTokens.Count > 0)
         {
-            // 获取对应的JsonWebToken对象
-            var jsonWebToken = GetToken(accessToken);
-            if (jsonWebToken != null)
+            foreach (var tokenEntry in tokenState.TokenEntries)
             {
+                if (!tokenState.TokenKeyMap.TryGetValue(tokenEntry.Key, out var accessToken))
+                    continue;
+
+                var jsonWebToken = tokenEntry.Value;
+                if (jsonWebToken == null)
+                    continue;
+
                 // 删除AccessToken（不移除用户关联，避免递归）
                 RemoveTokenInternal(accessToken, false);
 
@@ -532,7 +510,83 @@ internal sealed class JsonWebTokenStore : IJsonWebTokenStore, IDisposable
         }
 
         // 清空用户Token列表
-        _cache.Remove(GetUserTokensKey(userId));
+        _cache.Remove(userTokensKey);
+    }
+
+    /// <summary>
+    /// Redis模式：获取用户有效Token状态
+    /// </summary>
+    /// <param name="userId">用户标识</param>
+    /// <returns>有效Token状态</returns>
+    private RedisUserTokenState GetValidUserTokenStateForRedis(String userId)
+    {
+        var userTokensKey = GetUserTokensKey(userId);
+        var tokens = _cache.Get<HashSet<String>>(userTokensKey) ?? [];
+        if (tokens.Count == 0)
+            return RedisUserTokenState.Empty;
+
+        var tokenKeyMap = new Dictionary<String, String>(tokens.Count, StringComparer.Ordinal);
+        var tokenKeys = new List<String>(tokens.Count);
+        foreach (var token in tokens)
+        {
+            var tokenKey = GetTokenKey(token);
+            tokenKeyMap[tokenKey] = token;
+            tokenKeys.Add(tokenKey);
+        }
+
+        var tokenEntries = _cache.GetAll<JsonWebToken>(tokenKeys);
+
+        var validTokens = new HashSet<String>();
+        foreach (var tokenEntry in tokenEntries)
+        {
+            if (tokenKeyMap.TryGetValue(tokenEntry.Key, out var accessToken))
+                validTokens.Add(accessToken);
+        }
+
+        if (validTokens.Count != tokens.Count)
+        {
+            if (validTokens.Count > 0)
+                SetUserTokensForRedis(userTokensKey, validTokens);
+            else
+                _cache.Remove(userTokensKey);
+        }
+
+        return new RedisUserTokenState(tokenKeyMap, tokenEntries, validTokens);
+    }
+
+    /// <summary>
+    /// Redis模式：更新用户Token列表并保留原有过期时间
+    /// </summary>
+    /// <param name="userTokensKey">用户Token列表缓存键</param>
+    /// <param name="tokens">Token列表</param>
+    private void SetUserTokensForRedis(String userTokensKey, HashSet<String> tokens)
+    {
+        var expire = _cache.GetExpire(userTokensKey);
+        if (expire >= TimeSpan.Zero)
+            _cache.Set(userTokensKey, tokens, expire);
+        else
+            _cache.Set(userTokensKey, tokens);
+    }
+
+    /// <summary>
+    /// Redis用户Token状态
+    /// </summary>
+    private sealed class RedisUserTokenState
+    {
+        public static RedisUserTokenState Empty { get; } = new(new Dictionary<String, String>(), new Dictionary<String, JsonWebToken?>(), new HashSet<String>());
+
+        public IDictionary<String, String> TokenKeyMap { get; }
+
+        public IDictionary<String, JsonWebToken?> TokenEntries { get; }
+
+        public HashSet<String> ValidTokens { get; }
+
+        public RedisUserTokenState(IDictionary<String, String> tokenKeyMap, IDictionary<String, JsonWebToken?> tokenEntries, HashSet<String> validTokens)
+        {
+            TokenKeyMap = tokenKeyMap;
+            TokenEntries = tokenEntries;
+            ValidTokens = validTokens;
+        }
     }
 
     #endregion

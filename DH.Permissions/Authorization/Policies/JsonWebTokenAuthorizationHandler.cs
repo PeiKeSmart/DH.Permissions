@@ -84,7 +84,8 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
         var result = httpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader);
         if (!result || String.IsNullOrWhiteSpace(authorizationHeader))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
-        var token = authorizationHeader.ToString().Split(' ').Last().Trim();
+        if (!BearerTokenHelper.TryGetToken(authorizationHeader.ToString(), out var token))
+            throw new UnauthorizedAccessException("未授权，请传递有效的Authorization参数");
 
         // 优化：一次性获取Token对象，避免重复缓存查询
         var accessToken = _tokenStore.GetToken(token);
@@ -124,7 +125,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
         var currentDeviceId = DeviceIdCache.GetDeviceId(httpContext);
-        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
+        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj : String.Empty;
         var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
 
         if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
@@ -173,7 +174,11 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
             return;
         }
 
-        var token = authorizationHeader.ToString().Split(' ').Last().Trim();
+        if (!BearerTokenHelper.TryGetToken(authorizationHeader.ToString(), out var token))
+        {
+            context.Fail();
+            return;
+        }
 
         // 优化：一次性获取Token对象，避免重复缓存查询
         var accessToken = _tokenStore.GetToken(token);
@@ -223,7 +228,7 @@ public class JsonWebTokenAuthorizationHandler : AuthorizationHandler<JsonWebToke
 
         // 设备ID验证：验证Token中的clientId与当前设备ID是否一致
         var currentDeviceId = DeviceIdCache.GetDeviceId(httpContext);
-        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj as String : String.Empty;
+        var tokenClientId = payload.TryGetValue("clientId", out var clientIdObj) ? clientIdObj : String.Empty;
         var allowCrossDevice = PekSysSetting.Current.AllowJwtCrossDevice;
 
         if (!currentDeviceId.IsNullOrEmpty() && !tokenClientId.IsNullOrEmpty() && tokenClientId != currentDeviceId && !allowCrossDevice)
