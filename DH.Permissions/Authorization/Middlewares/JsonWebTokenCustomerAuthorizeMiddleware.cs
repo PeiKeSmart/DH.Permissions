@@ -76,7 +76,8 @@ public class JsonWebTokenCustomerAuthorizeMiddleware
         if (!result || String.IsNullOrWhiteSpace(authStr.ToString()))
             throw new UnauthorizedAccessException("未授权，请传递Header头的Authorization参数");
 
-        var token = authStr.ToString()["Bearer ".Length..].Trim();
+        if (!BearerTokenHelper.TryGetToken(authStr.ToString(), out var token, true))
+            throw new UnauthorizedAccessException("未授权，请传递有效的Authorization参数");
 
         // 尝试从缓存获取验证结果，如果没有则进行验证并缓存
         var validationResult = TokenValidationCache.GetCachedResult(context, token);

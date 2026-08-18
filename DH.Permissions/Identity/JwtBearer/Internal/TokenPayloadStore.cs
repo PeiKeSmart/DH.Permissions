@@ -37,8 +37,6 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     /// <param name="token">令牌</param>
     public void Remove(String token)
     {
-        if (!_cache.ContainsKey(GetPayloadKey(token)))
-            return;
         _cache.Remove(GetPayloadKey(token));
     }
 
@@ -50,10 +48,6 @@ internal sealed class TokenPayloadStore : ITokenPayloadStore
     public void Remove(String token, Int32 expire)
     {
         var key = GetPayloadKey(token);
-
-        if (!_cache.ContainsKey(key))
-            return;
-
         _cache.SetExpire(key, TimeSpan.FromSeconds(expire));
     }
 

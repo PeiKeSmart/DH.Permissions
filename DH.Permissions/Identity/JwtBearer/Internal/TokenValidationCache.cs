@@ -9,9 +9,9 @@ namespace DH.Permissions.Identity.JwtBearer.Internal;
 internal static class TokenValidationCache
 {
     /// <summary>
-    /// 缓存键前缀
+    /// HttpContext.Items中的缓存容器键
     /// </summary>
-    private const String CacheKeyPrefix = "JWT_VALIDATION_CACHE_";
+    private static readonly Object CacheKey = new();
     
     /// <summary>
     /// 从HttpContext中获取缓存的Token验证结果
@@ -23,10 +23,9 @@ internal static class TokenValidationCache
     {
         if (httpContext?.Items == null || String.IsNullOrWhiteSpace(token))
             return null;
-            
-        var cacheKey = GetCacheKey(token);
-        return httpContext.Items.TryGetValue(cacheKey, out var cachedResult) 
-            ? cachedResult as TokenValidationResult 
+
+        return TryGetCache(httpContext, out var cache) && cache.TryGetValue(token, out var cachedResult)
+            ? cachedResult
             : null;
     }
     
@@ -40,9 +39,9 @@ internal static class TokenValidationCache
     {
         if (httpContext?.Items == null || String.IsNullOrWhiteSpace(token) || result == null)
             return;
-            
-        var cacheKey = GetCacheKey(token);
-        httpContext.Items[cacheKey] = result;
+
+        var cache = GetOrCreateCache(httpContext);
+        cache[token] = result;
     }
     
     /// <summary>
@@ -54,9 +53,13 @@ internal static class TokenValidationCache
     {
         if (httpContext?.Items == null || String.IsNullOrWhiteSpace(token))
             return;
-            
-        var cacheKey = GetCacheKey(token);
-        httpContext.Items.Remove(cacheKey);
+
+        if (!TryGetCache(httpContext, out var cache))
+            return;
+
+        cache.Remove(token);
+        if (cache.Count == 0)
+            httpContext.Items.Remove(CacheKey);
     }
     
     /// <summary>
@@ -67,26 +70,40 @@ internal static class TokenValidationCache
     {
         if (httpContext?.Items == null)
             return;
-            
-        var keysToRemove = httpContext.Items.Keys
-            .Where(key => key is String keyStr && keyStr.StartsWith(CacheKeyPrefix))
-            .ToList();
-            
-        foreach (var key in keysToRemove)
-        {
-            httpContext.Items.Remove(key);
-        }
+
+        httpContext.Items.Remove(CacheKey);
     }
     
     /// <summary>
-    /// 生成缓存键
+    /// 尝试获取缓存容器
     /// </summary>
-    /// <param name="token">Token字符串</param>
-    /// <returns>缓存键</returns>
-    private static String GetCacheKey(String token)
+    /// <param name="httpContext">HTTP上下文</param>
+    /// <param name="cache">缓存容器</param>
+    /// <returns>是否获取成功</returns>
+    private static Boolean TryGetCache(HttpContext httpContext, out Dictionary<String, TokenValidationResult> cache)
     {
-        // 使用Token的哈希值作为缓存键，避免在HttpContext.Items中存储完整的Token
-        var tokenHash = token.GetHashCode().ToString();
-        return $"{CacheKeyPrefix}{tokenHash}";
+        if (httpContext.Items.TryGetValue(CacheKey, out var cacheObject) && cacheObject is Dictionary<String, TokenValidationResult> tokenCache)
+        {
+            cache = tokenCache;
+            return true;
+        }
+
+        cache = null;
+        return false;
+    }
+
+    /// <summary>
+    /// 获取或创建缓存容器
+    /// </summary>
+    /// <param name="httpContext">HTTP上下文</param>
+    /// <returns>缓存容器</returns>
+    private static Dictionary<String, TokenValidationResult> GetOrCreateCache(HttpContext httpContext)
+    {
+        if (TryGetCache(httpContext, out var cache))
+            return cache;
+
+        cache = new Dictionary<String, TokenValidationResult>(StringComparer.Ordinal);
+        httpContext.Items[CacheKey] = cache;
+        return cache;
     }
 }
